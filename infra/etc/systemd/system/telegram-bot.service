@@ -1,0 +1,41 @@
+[Unit]
+Description=Telegram AI Bot Worker (Hardened)
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=8
+
+[Service]
+User=telegram-bot
+Group=telegram-bot
+WorkingDirectory=/opt/telegram-bot
+EnvironmentFile=/opt/telegram-bot/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=APP_DIR=/opt/telegram-bot
+
+ExecStart=/usr/bin/python3 /opt/telegram-bot/bot.py
+
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+KillSignal=SIGTERM
+
+LimitNOFILE=65536
+TasksMax=200
+MemoryMax=512M
+UMask=007
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+MemoryDenyWriteExecute=true
+LockPersonality=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+ReadWritePaths=/opt/telegram-bot
+
+[Install]
+WantedBy=multi-user.target
