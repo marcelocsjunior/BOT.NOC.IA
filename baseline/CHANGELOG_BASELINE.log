@@ -57,3 +57,13 @@ last_release=/var/lib/noc/releases/LAST_RELEASE.zip
 - Runtime SHA256 (aplicado no coletor):
   - 00_bump_env_canonic.sh = 0f27f20d4f294b6e5c48a9a1c14198eb4541d26da13c4732175f6c21b75f532c
   - 20_deploy_zip_canonic.sh = 532a6f58303c878ecf57e4e41219a89307e0ac572db183c555470ad93732cf3d
+
+=== 2026-03-02 (BRT) — SYNC_RUNBOOKS evidence (repo -> coletor) ===
+- Commit (fonte de verdade / repo): ce3ce2d
+- Coletor (ubt / 192.168.88.108) evidence:
+  - /var/lib/noc/evidence/runbooks_sync_2026-03-02_042117.meta
+  - /var/lib/noc/evidence/runbooks_sync_2026-03-02_042117.sha256
+- Resultado: Drift=0 (oficial vs noc_canonic_scripts) + gate OK (ruído Telegram ignorado)
+- SHA256 (runbooks):
+  - 00_bump_env_canonic.sh  = 0f27f20d4f294b6e5c48a9a1c14198eb4541d26da13c4732175f6c21b75f532c
+  - 20_deploy_zip_canonic.sh = 532a6f58303c878ecf57e4e41219a89307e0ac572db183c555470ad93732cf3d
