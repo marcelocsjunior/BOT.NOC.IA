@@ -1,3 +1,6 @@
+## Baseline (fonte de verdade)
+- **00_INDEX_CANONICO.md** — ponteiro único do baseline vigente (AS-RUNNING, releases, infra, governança)
+
 # Docs — BOT ia NOC (UN1)
 
 ## Operação
