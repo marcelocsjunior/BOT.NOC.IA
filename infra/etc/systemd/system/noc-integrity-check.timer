@@ -1,0 +1,10 @@
+[Unit]
+Description=Run NOC Integrity Check daily
+
+[Timer]
+OnCalendar=*-*-* 06:00:00
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

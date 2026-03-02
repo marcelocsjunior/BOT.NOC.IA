@@ -1,0 +1,27 @@
+[Unit]
+Description=NOC Integrity Check (baseline + releases SHA256)
+After=local-fs.target
+
+[Service]
+Type=oneshot
+
+# roda como root para padronizar logs/rotacionados (root:adm)
+User=root
+Group=adm
+
+ExecStart=/usr/local/bin/noc-integrity-check.sh
+
+# hardening (sem rede; só lê baseline/releases e escreve no log)
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateNetwork=true
+ProtectSystem=strict
+ProtectHome=true
+
+ReadOnlyPaths=/var/lib/noc/baseline
+ReadOnlyPaths=/var/lib/noc/releases
+ReadWritePaths=/var/log/noc
+
+RestrictAddressFamilies=AF_UNIX
+LockPersonality=true
+MemoryDenyWriteExecute=true

@@ -104,3 +104,16 @@ Regras duras:
 - Release 0 (AS-RUNNING): `un1-2026-02-28-build-2026-02-28_094935` (**Latest**)
 
 > Este índice é o “ponteiro único” do baseline vigente. Qualquer atualização de baseline deve atualizar este arquivo.
+
+## Integrity automation (baseline + releases)
+Systemd (AS-RUNNING):
+- infra/etc/systemd/system/noc-integrity-check.service
+- infra/etc/systemd/system/noc-integrity-check.timer
+
+Scripts (fonte de verdade):
+- tools/integrity/noc-integrity-check.sh (valida SHA256 do baseline e do cofre de releases)
+- tools/integrity/noc-integrity-alert.sh (alerta Telegram; requer rede)
+
+Nota operacional:
+- O unit `noc-integrity-check.service` roda hardenizado e pode estar sem rede (ex.: `PrivateNetwork=true`).
+  O alerta Telegram deve rodar fora desse unit (ou em unit separado com rede).
