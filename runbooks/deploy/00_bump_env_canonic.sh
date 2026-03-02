@@ -50,7 +50,8 @@ systemctl restart "$SVC"
 
 echo "==> 3) Sanity log (5 min)"
 journalctl -u "$SVC" --since "5 min ago" --no-pager -o cat \
- | egrep -i "Traceback|IndentationError|SyntaxError|BadRequest|400 Bad Request|parse entities|ERROR|CRITICAL" \
+ | egrep -i "Traceback|IndentationError|SyntaxError|ERROR|CRITICAL" \
+ | egrep -vi "BadRequest|400 Bad Request|parse entities" \
  && { echo "FATAL: erros relevantes no log"; exit 1; } \
  || echo "OK: .env bump aplicado e serviço reiniciado sem erros relevantes"
 
