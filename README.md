@@ -121,6 +121,7 @@ Exemplo (Release 0 / AS-RUNNING):
   - `logrotate.d/*`
   - `systemd/system/*` (unit + drop-ins)
 - `release/` — hashes/artefatos do snapshot (prova do AS-RUNNING)
+ - `docs/` — documentação operacional (índice: [docs/README.md](docs/README.md); sync: [docs/SYNC_RUNBOOKS.md](docs/SYNC_RUNBOOKS.md))
 - `.env.example` — modelo de variáveis (sem segredos)
 - `.gitignore` — bloqueia runtime (DB/logs/state/venv)
 
