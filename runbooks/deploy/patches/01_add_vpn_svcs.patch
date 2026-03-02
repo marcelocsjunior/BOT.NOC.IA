@@ -1,0 +1,40 @@
+--- noc_bot/config.py	2026-02-27 06:59:44.000000000 +0000
++++ noc_bot/config.py	2026-02-28 12:24:18.596861339 +0000
+@@ -146,6 +146,37 @@
+         "ESCALLO",
+         ("escalo", "escallo", "omminichanel", "futurotec escallo", "futurotec"),
+     ),
++
++    # VPN site-to-site (UN2/UN3)
++    # Observação: disponibilidade (UP/DOWN). Não usa QUALITY.
++    "VPN2": Svc(
++        "VPN2",
++        "VPN_UN2",
++        "VPN UN2 (Barreiro)",
++        "VPN UN2 (Barreiro)",
++        (
++            "vpn un2",
++            "vpn barreiro",
++            "barreiro vpn",
++            "vpn unidade 2",
++        ),
++    ),
++    "VPN3": Svc(
++        "VPN3",
++        "VPN_UN3",
++        "VPN UN3 (Alípio de Mello)",
++        "VPN UN3 (Alípio de Mello)",
++        (
++            "vpn un3",
++            "vpn alipio",
++            "vpn alípio",
++            "vpn alipio de mello",
++            "vpn alípio de mello",
++            "alipio vpn",
++            "alípio vpn",
++            "vpn unidade 3",
++        ),
++    ),
+ }
+ 
+ def severity_label(check_name: str, wan_mundi_state: str | None, wan_vale_state: str | None) -> str:

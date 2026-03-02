@@ -1,0 +1,11 @@
+--- noc_bot/ui/keyboards.py	2026-02-28 09:29:40.000000000 +0000
++++ noc_bot/ui/keyboards.py	2026-02-28 12:24:33.827635691 +0000
+@@ -84,6 +84,8 @@
+         [InlineKeyboardButton("Link 1 (Mundivox)", callback_data="evp:L1")],
+         [InlineKeyboardButton("Link 2 (Valenet)", callback_data="evp:L2")],
+         [InlineKeyboardButton("Escallo", callback_data="evp:ESC")],
++        [InlineKeyboardButton("VPN UN2 (Barreiro)", callback_data="evp:VPN2")],
++        [InlineKeyboardButton("VPN UN3 (Alípio de Mello)", callback_data="evp:VPN3")],
+         [InlineKeyboardButton("⬅️ Voltar", callback_data="sup:now")],
+     ]
+     return InlineKeyboardMarkup(rows)

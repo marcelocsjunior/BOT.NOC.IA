@@ -1,0 +1,86 @@
+--- noc_bot/evidence/builder.py	2026-02-27 06:59:44.000000000 +0000
++++ noc_bot/evidence/builder.py	2026-02-28 12:25:13.100564250 +0000
+@@ -21,6 +21,18 @@
+ UNSTABLE_HOURS = int(os.getenv("NOC_UNSTABLE_HOURS", "3") or "3")
+ 
+ 
++# VPN: o coletor roda em UN1, mas a evidência precisa ficar "produto".
++VPN_UNIT_LABELS = {
++    "VPN_UN2": "UN2 — Barreiro",
++    "VPN_UN3": "UN3 — Alípio de Mello",
++}
++
++
++def _vpn_monitored_label(svc) -> Optional[str]:
++    k = _upper(getattr(svc, "key", "") or "")
++    return VPN_UNIT_LABELS.get(k)
++
++
+ def _upper(s: str) -> str:
+     return (s or "").upper()
+ 
+@@ -133,11 +145,21 @@
+ 
+     cids_down, has_more_down = _unique_recent_cids(evs_svc_down, limit=MAX_CIDS)
+ 
+-    lines = [
+-        f"📎 Evidência — {svc.label} ({UNIT})",
+-        f"Janela: últimas {window}",
+-        f"Estado atual: {state_h}",
+-    ]
++    mon = _vpn_monitored_label(svc)
++    if mon:
++        lines = [
++            f"📎 Evidência — {svc.label}",
++            f"Unidade monitorada: {mon}",
++            f"Coletor: {UNIT}",
++            f"Janela: últimas {window}",
++            f"Estado atual: {state_h}",
++        ]
++    else:
++        lines = [
++            f"📎 Evidência — {svc.label} ({UNIT})",
++            f"Janela: últimas {window}",
++            f"Estado atual: {state_h}",
++        ]
+ 
+     if not dm:
+         lines.append(f"Oscilações (24h): {osc_24h}")
+@@ -190,15 +212,28 @@
+ 
+     last_bucket = _dur_bucket_pt(occ_recent[0][1]) if occ_recent else "-"
+ 
+-    lines = [
+-        f"Assunto: Indisponibilidade/Instabilidade — {svc.subject} — {UNIT} — {subj_when} (BRT)",
+-        f"Unidade: {UNIT}",
+-        f"Serviço: {svc.subject}",
+-        f"Janela analisada: últimas 24h | {instab_str}",
+-        f"Estado atual: {state_h}",
+-        f"Resumo: {osc_24h} oscilações/24h; última ocorrência: {last_bucket}.",
+-        "Ocorrências (mais recentes):",
+-    ]
++    mon = _vpn_monitored_label(svc)
++    if mon:
++        lines = [
++            f"Assunto: Indisponibilidade/Instabilidade — {svc.subject} — {mon} — {subj_when} (BRT)",
++            f"Unidade monitorada: {mon}",
++            f"Coletor: {UNIT}",
++            f"Serviço: {svc.subject}",
++            f"Janela analisada: últimas 24h | {instab_str}",
++            f"Estado atual: {state_h}",
++            f"Resumo: {osc_24h} oscilações/24h; última ocorrência: {last_bucket}.",
++            "Ocorrências (mais recentes):",
++        ]
++    else:
++        lines = [
++            f"Assunto: Indisponibilidade/Instabilidade — {svc.subject} — {UNIT} — {subj_when} (BRT)",
++            f"Unidade: {UNIT}",
++            f"Serviço: {svc.subject}",
++            f"Janela analisada: últimas 24h | {instab_str}",
++            f"Estado atual: {state_h}",
++            f"Resumo: {osc_24h} oscilações/24h; última ocorrência: {last_bucket}.",
++            "Ocorrências (mais recentes):",
++        ]
+ 
+     if occ_recent:
+         for i, (d, dur) in enumerate(occ_recent, start=1):
