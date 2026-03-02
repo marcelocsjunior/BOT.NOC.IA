@@ -16,7 +16,9 @@
 
 - [DEPLOY.md](DEPLOY.md) — Deploy seguro (escopo, sanity checks, rollback)
 
-> Regra de ouro: repo versiona **código + infra AS-RUNNING**, mas produção preserva runtime e dados (`.env`, `venv`, DB/state, logs).
+- [SYNC_RUNBOOKS.md](SYNC_RUNBOOKS.md) — Sync Notebook → Coletor (ubt) dos runbooks + validação (grep/diff/sha256) + evidência
+
+> Regra de ouro: repo versiona **có0digo + infra AS-RUNNING**, mas produção preserva runtime e dados (`.env`, `venv`, DB/state, logs).
 
 ---
 
