@@ -27,9 +27,9 @@ Foco: **RouterOS → syslog → rsyslog (raw) → SQLite (WAL) → Telegram Bot 
 ## 2) Health check rápido (30–60s)
 
 ### 2.1 Serviços
-- Esperado: todos **active (running)**
+Esperado: todos **active (running)**
 
-Sugestão de checagem:
+Checagens:
 - `systemctl status rsyslog --no-pager`
 - `systemctl status noc-sqlite-tailer --no-pager`
 - `systemctl status telegram-bot --no-pager`
