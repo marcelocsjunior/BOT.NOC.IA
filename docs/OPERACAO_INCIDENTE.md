@@ -194,5 +194,3 @@ Se o incidente começou após alteração:
 - Infra AS-RUNNING (`infra/etc`) deve acompanhar mudanças reais (systemd/rsyslog/logrotate)
 - Evidências e snapshots devem existir antes de mudanças relevantes
 ```
-
-Se quiser, o próximo arquivo depois desse é um **`docs/OPERACAO_CHECKLIST.md`** (1 página) com checklist “pré-mudança / pós-mudança / diária”, bem estilo NOC.
