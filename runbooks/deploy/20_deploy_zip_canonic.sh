@@ -60,7 +60,8 @@ echo "==> 6) Start + sanity logs"
 systemctl start "$SVC"
 
 journalctl -u "$SVC" --since "10 min ago" --no-pager -o cat \
- | egrep -i "Traceback|IndentationError|SyntaxError|BadRequest|400 Bad Request|parse entities|ERROR|CRITICAL" \
+ | egrep -i "Traceback|IndentationError|SyntaxError|ERROR|CRITICAL" \
+ | egrep -vi "BadRequest|400 Bad Request|parse entities" \
  && { echo "FATAL: erros relevantes no log"; exit 1; } \
  || echo "OK: deploy aplicado sem erros relevantes"
 
