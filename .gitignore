@@ -16,3 +16,4 @@ tailer.state.json
 
 *.tar.gz
 *.sha256
+!baseline/CHANGELOG_BASELINE.log
