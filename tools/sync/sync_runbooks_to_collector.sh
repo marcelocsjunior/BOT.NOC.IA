@@ -32,8 +32,9 @@ done
 
 cd "$REPO_DIR"
 
+# evita erro de rebase com working tree suja
 if [[ $NO_PULL -eq 0 ]]; then
-  git pull --rebase
+  git pull --rebase --autostash
 fi
 
 COMMIT="$(git rev-parse --short HEAD)"
@@ -50,10 +51,9 @@ for f in "${FILES[@]}"; do
   LSHA["$f"]="$(sha256sum "$f" | awk '{print $1}')"
 done
 
-# SHA remoto sem sudo (evita sudo sem TTY / drift fantasma)
 remote_sha() {
   local p="$1"
-  ssh "${COLLECTOR_USER}@${COLLECTOR_HOST}" "sha256sum '$p' 2>/dev/null | awk '{print \$1}'" || true
+  ssh -T "${COLLECTOR_USER}@${COLLECTOR_HOST}" "sha256sum '$p' 2>/dev/null | awk '{print \$1}'" || true
 }
 
 NEED_SYNC=0
@@ -77,13 +77,14 @@ fi
 echo "==> Drift detectado (ou --force). Aplicando sync..."
 
 REMOTE_TMP="/tmp/runbooks_sync_${TS}"
-ssh "${COLLECTOR_USER}@${COLLECTOR_HOST}" "mkdir -p '$REMOTE_TMP'"
+ssh -T "${COLLECTOR_USER}@${COLLECTOR_HOST}" "mkdir -p '$REMOTE_TMP'"
 
 for f in "${FILES[@]}"; do
-  scp "$f" "${COLLECTOR_USER}@${COLLECTOR_HOST}:${REMOTE_TMP}/"
+  scp -q "$f" "${COLLECTOR_USER}@${COLLECTOR_HOST}:${REMOTE_TMP}/"
 done
 
-ssh -tt "${COLLECTOR_USER}@${COLLECTOR_HOST}" bash -s <<REMOTE_SCRIPT
+# IMPORTANTE: sem TTY (sem -t) pra não virar shell interativo no coletor
+ssh -T "${COLLECTOR_USER}@${COLLECTOR_HOST}" bash -s <<REMOTE_SCRIPT
 set -euo pipefail
 
 REMOTE_BASE='${REMOTE_BASE}'
@@ -97,11 +98,9 @@ IP='${COLLECTOR_HOST}'
 DUP_USER='${DUP_OWNER%:*}'
 DUP_GROUP='${DUP_OWNER#*:}'
 
-# oficiais
 sudo install -m 0755 "\$REMOTE_TMP/00_bump_env_canonic.sh" "\$REMOTE_BASE/00_bump_env_canonic.sh"
 sudo install -m 0755 "\$REMOTE_TMP/20_deploy_zip_canonic.sh" "\$REMOTE_BASE/20_deploy_zip_canonic.sh"
 
-# duplicados
 sudo mkdir -p "\$REMOTE_DUP"
 sudo install -o "\$DUP_USER" -g "\$DUP_GROUP" -m 0755 "\$REMOTE_BASE/00_bump_env_canonic.sh" "\$REMOTE_DUP/00_bump_env_canonic.sh"
 sudo install -o "\$DUP_USER" -g "\$DUP_GROUP" -m 0755 "\$REMOTE_BASE/20_deploy_zip_canonic.sh" "\$REMOTE_DUP/20_deploy_zip_canonic.sh"
@@ -123,9 +122,7 @@ SHA_OUT=\$(sha256sum \
   "\$REMOTE_DUP/00_bump_env_canonic.sh" \
   "\$REMOTE_DUP/20_deploy_zip_canonic.sh")
 
-# evidência (tee) + owner
 sudo mkdir -p "\$REMOTE_EVIDENCE"
-
 sudo tee "\$REMOTE_EVIDENCE/runbooks_sync_\$TS.meta" >/dev/null <<META_EOF
 SYNC_RUNBOOKS_AT=\$TS
 COMMIT=\$COMMIT
