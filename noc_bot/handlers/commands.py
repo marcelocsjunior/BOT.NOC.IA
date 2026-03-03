@@ -254,6 +254,9 @@ async def cmd_timeline(update: Update, context: ContextTypes.DEFAULT_TYPE):
     lines = [f"Timeline {UNIT} — últimos {len(evs)} (fonte={snap.source})", ""]
     for e in evs:
         lines.append(f"{iso_local(e.ts)} | {e.check} | {e.state} | {e.host} | cid={e.cid}")
+    # UX: timeline antigo->recente (mais novo perto do teclado)
+    if len(lines) > 1:
+        lines = [lines[0]] + list(reversed(lines[1:]))
     await _send(update, context, "\n".join(lines), reply_markup=_kb(update))
 
 
