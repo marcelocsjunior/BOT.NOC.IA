@@ -49,7 +49,19 @@ if [ -d "$PATCH_DIR" ]; then
   else
     for p in "${patches[@]}"; do
       echo " - patch: $(basename "$p")"
-      ( cd "$STAGE" && patch -p0 < "$p" )
+      (
+        cd "$STAGE"
+        rc=0
+        out="$(patch -p0 -N --batch --reject-file=/dev/null < "$p" 2>&1)" || rc=$?
+        if [ "$rc" -eq 0 ]; then
+          :
+        elif echo "$out" | grep -qiE "previously applied|Reversed"; then
+          echo " - patch ja aplicado: $(basename "$p")"
+        else
+          echo "$out" >&2
+          exit 2
+        fi
+      )
     done
   fi
 else

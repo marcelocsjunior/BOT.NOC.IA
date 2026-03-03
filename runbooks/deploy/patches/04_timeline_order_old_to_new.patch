@@ -1,5 +1,5 @@
---- a/noc_bot/handlers/commands.py	2026-02-28 17:52:17.179521923 -0300
-+++ b/noc_bot/handlers/commands.py	2026-03-03 16:30:12.721897172 -0300
+--- noc_bot/handlers/commands.py	2026-02-28 17:52:17.179521923 -0300
++++ noc_bot/handlers/commands.py	2026-03-03 16:30:12.721897172 -0300
 @@ -254,6 +254,9 @@
      lines = [f"Timeline {UNIT} — últimos {len(evs)} (fonte={snap.source})", ""]
      for e in evs:
