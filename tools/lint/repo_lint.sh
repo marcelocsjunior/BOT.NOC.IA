@@ -10,7 +10,7 @@ echo "== repo_lint =="
 echo -n "[secrets] "
 tmp="$(mktemp)"
 git grep -nE '([0-9]{8,10}:[A-Za-z0-9_-]{20,}|gh[pous]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{20,}|sk-[A-Za-z0-9]{20,}|-----BEGIN (RSA|EC|OPENSSH) PRIVATE KEY-----|BEGIN PRIVATE KEY)' \
-  -- . ':!*.md' ':!.env.example' >"$tmp" || true
+  -- . ':!*.md' ':!.env.example' ':!tools/lint/repo_lint.sh' >"$tmp" || true
 
 if [ -s "$tmp" ]; then
   echo "FAIL"
