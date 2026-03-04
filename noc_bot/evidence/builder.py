@@ -134,7 +134,16 @@ def _down_occurrences_with_dur(evs: list) -> List[Tuple[object, Optional[float]]
     return out
 
 
-def build_evidence_compact(latest: dict, evs_24h: list, svc, now, window: str, dm: bool = False) -> Tuple[str, InlineKeyboardMarkup]:
+
+def _clean_cid(cid: str) -> str:
+    """Remove sujeira de métricas grudadas no cid (loss/rtt)."""
+    c = (cid or "").strip()
+    for sep in (" loss=", " rtt=", "| loss=", "| rtt="):
+        if sep in c:
+            c = c.split(sep, 1)[0].strip()
+    return c
+
+def build_evidence_compact(latest: dict, evs_24h: list, svc, now, window: str, dm: bool = False, source: str = "-", notes: str = "") -> Tuple[str, InlineKeyboardMarkup]:
     state_h, _ = latest_state_and_instability(latest, evs_24h, svc, now, hours=UNSTABLE_HOURS)
     evs_svc_all = _events_for_key(evs_24h, svc.key)
     evs_svc_down = _events_with_state(evs_svc_all, "DOWN")
@@ -144,7 +153,21 @@ def build_evidence_compact(latest: dict, evs_24h: list, svc, now, window: str, d
     osc_24h = len(occ_all)
 
     cids_down, has_more_down = _unique_recent_cids(evs_svc_down, limit=MAX_CIDS)
+    cids_clean = []
+    seen = set()
+    for x in (cids_down or []):
+        cx = _clean_cid(x)
+        if not cx or cx in seen:
+            continue
+        seen.add(cx)
+        cids_clean.append(cx)
 
+
+    src = (source or "-").strip()
+    nts = (notes or "").strip()
+    src_disp = src
+    if src.upper() == "LOG" and nts and nts.lower() != "ok":
+        src_disp = f"LOG ⚠️ {nts}"
     mon = _vpn_monitored_label(svc)
     if mon:
         lines = [
@@ -152,12 +175,14 @@ def build_evidence_compact(latest: dict, evs_24h: list, svc, now, window: str, d
             f"Unidade monitorada: {mon}",
             f"Coletor: {UNIT}",
             f"Janela: últimas {window}",
+            f"📦 Fonte: {src_disp}",
             f"Estado atual: {state_h}",
         ]
     else:
         lines = [
             f"📎 Evidência — {svc.label} ({UNIT})",
             f"Janela: últimas {window}",
+            f"📦 Fonte: {src_disp}",
             f"Estado atual: {state_h}",
         ]
 
@@ -206,9 +231,14 @@ def build_ticket_text(latest: dict, evs_24h: list, svc, now) -> str:
     instab_str = f"Instabilidade recente: últimas {UNSTABLE_HOURS}h" if unstable_now else f"Instabilidade recente: não detectada nas últimas {UNSTABLE_HOURS}h"
 
     cids_down, has_more_down = _unique_recent_cids(evs_svc_down, limit=MAX_CIDS)
-    cids_str = ", ".join(cids_down) if cids_down else "-"
-    if has_more_down:
-        cids_str += " (há mais disponíveis)"
+    cids_clean = []
+    seen = set()
+    for x in (cids_down or []):
+        cx = _clean_cid(x)
+        if not cx or cx in seen:
+            continue
+        seen.add(cx)
+        cids_clean.append(cx)
 
     last_bucket = _dur_bucket_pt(occ_recent[0][1]) if occ_recent else "-"
 
@@ -247,7 +277,9 @@ def build_ticket_text(latest: dict, evs_24h: list, svc, now) -> str:
             lines.append(f"Último evento observado: {_fmt_when_abs(last.ts)} — {_upper(getattr(last,'state','-'))} — cid={getattr(last,'cid','-')}")
 
     lines += [
-        f"Evidências (CIDs DOWN — {MAX_CIDS} mais recentes): {cids_str}",
+        f"Evidências (CIDs DOWN — {MAX_CIDS} mais recentes):",
+        *( [f"- {c}" for c in cids_clean] if cids_clean else ["- -"] ),
+        *( ["(há mais disponíveis)"] if has_more_down else [] ),
         "Solicitação: verificar instabilidade/rota/serviço e retornar causa, ações corretivas e previsão.",
     ]
     return "\n".join(lines)
