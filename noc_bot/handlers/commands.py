@@ -534,7 +534,12 @@ async def cmd_evidence_request(update: Update, context: ContextTypes.DEFAULT_TYP
     w_override = detect_window_override(getattr(update.effective_message, "text", "") or "")
     window = w_override or _choose_window_auto_24h(evs_24h, svc, now)
 
-    evidence_txt, evidence_kb = build_evidence_compact(latest, evs_24h, svc, now, window, dm=_is_dm(update))
+    evidence_txt, evidence_kb = build_evidence_compact(
+        latest, evs_24h, svc, now, window,
+        dm=_is_dm(update),
+        source=getattr(snap, "source", "-"),
+        notes=getattr(snap, "notes", ""),
+    )
 
     if _is_dm(update):
         await _send_dm_hub(update, context, evidence_txt, reply_markup=evidence_kb)
@@ -576,12 +581,18 @@ async def cmd_evidence_detail(update: Update, context: ContextTypes.DEFAULT_TYPE
         svc_label=svc.label,
         window=window,
         source=getattr(snap, "source", "-"),
-        max_lines=80,
+        max_lines=(40 if _is_dm(update) else 120),
     )
 
-    await _send(update, context, txt, reply_markup=kb_evidence_actions(svc.code, window))
+    # DM produto: evita entulho. Em callback, edita o card.
 
+    if _is_dm(update):
 
+        await _send_dm_hub(update, context, txt, reply_markup=kb_evidence_actions(svc.code, window))
+
+    else:
+
+        await _send(update, context, txt, reply_markup=kb_evidence_actions(svc.code, window))
 async def cmd_evidence_ticket(update: Update, context: ContextTypes.DEFAULT_TYPE, svc_code: str, window: str):
     svc = SVCS.get(svc_code)
     if not svc:

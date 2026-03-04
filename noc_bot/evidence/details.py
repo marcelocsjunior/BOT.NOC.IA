@@ -41,6 +41,23 @@ def _upper(s: str) -> str:
     return (s or "").upper()
 
 
+
+
+def _icon(state: str) -> str:
+    st = _upper(state)
+    if st == "UP":
+        return "🟢"
+    if st == "DOWN":
+        return "🔴"
+    return "⚪"
+
+
+def _clean_cid(cid: str) -> str:
+    c = (cid or "").strip()
+    for sep in (" loss=", " rtt=", "| loss=", "| rtt="):
+        if sep in c:
+            c = c.split(sep, 1)[0].strip()
+    return c
 def _to_local(dt: datetime) -> datetime:
     if getattr(dt, "tzinfo", None) is None:
         dt = dt.replace(tzinfo=timezone.utc)
@@ -91,7 +108,7 @@ def build_evidence_detail_text(
         if not isinstance(ts, datetime):
             continue
 
-        cid = str(getattr(e, "cid", "-") or "")
+        cid = _clean_cid(str(getattr(e, "cid", "-") or ""))
         raw_s = str(getattr(e, "raw", "") or "")
         # limpa ruído de testes/execuções locais
         if raw_s and ("sudo:" in raw_s.lower()):
@@ -106,10 +123,10 @@ def build_evidence_detail_text(
                 f"{iso_local(ts)} | {getattr(e,'check','-')} | {getattr(e,'state','-')} | {getattr(e,'host','-')}{metrics} | cid={cid or '-'}"
             )
         else:
-            lines.append(
-                f"{fmt_when_short(ts, now)} | {getattr(e,'state','-')}{metrics} | cid={cid or '-'}"
-            )
-
+            st = _upper(str(getattr(e, 'state', '-') or '-'))
+            host = str(getattr(e, 'host', '-') or '-')
+            lines.append(f"{_icon(st)} {fmt_when_short(ts, now)} | {st}{metrics} | host={host}")
+            lines.append(f"   cid={cid or '-'}")
     if len(evs_svc) > max_lines:
         lines.append(f"... ({len(evs_svc) - max_lines} linhas anteriores omitidas)")
 
