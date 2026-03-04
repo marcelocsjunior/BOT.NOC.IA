@@ -1,0 +1,7 @@
+tag v2026.03.04-evidence-ux
+
+Evidence UX v2: Fonte DB/LOG, organizada legível, DM sem spam, CIDs limpos no texto pronto
+da6ae20 Evidence UX v2: Fonte DB/LOG, organizada legível, DM sem spam, CIDs limpos no texto pronto (#1)
+noc_bot/evidence/builder.py
+noc_bot/evidence/details.py
+noc_bot/handlers/commands.py
