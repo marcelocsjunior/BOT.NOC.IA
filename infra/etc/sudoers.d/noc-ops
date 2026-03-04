@@ -1,0 +1,13 @@
+# BOT ia NOC — ops shortcuts (non-interactive)
+
+# Permite status com flags (ex.: --no-pager) MAS só para esse serviço
+Cmnd_Alias NOC_SVC = /usr/bin/systemctl status telegram-bot.service *, \
+                     /usr/bin/systemctl start telegram-bot.service, \
+                     /usr/bin/systemctl stop telegram-bot.service, \
+                     /usr/bin/systemctl restart telegram-bot.service
+
+Cmnd_Alias NOC_LOG = /usr/bin/journalctl -u telegram-bot.service *
+
+Cmnd_Alias NOC_PY  = /usr/bin/python3 -m py_compile /opt/telegram-bot/noc_bot/evidence/builder.py /opt/telegram-bot/noc_bot/evidence/details.py /opt/telegram-bot/noc_bot/handlers/commands.py
+
+bio ALL=(root) NOPASSWD: NOC_SVC, NOC_LOG, NOC_PY
