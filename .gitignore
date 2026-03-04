@@ -17,3 +17,8 @@ tailer.state.json
 *.tar.gz
 *.sha256
 !baseline/CHANGELOG_BASELINE.log
+
+# artifacts (não versionar)
+runbooks/_packages/*.zip
+*.zip
+*.log
