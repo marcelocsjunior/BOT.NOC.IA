@@ -101,6 +101,13 @@ Regras duras:
 
 ## 7) Releases
 
+- Release 1 (Evidence UX v2): `v2026.03.04-evidence-ux` 
+  - GitHub Release: https://github.com/marcelocsjunior/BOT.NOC.IA/releases/tag/v2026.03.04-evidence-ux
+  - PR: #1 (merged)
+  - Manifest: `evidence_release_manifest.txt` (main)
+
+
+
 - Release 0 (AS-RUNNING): `un1-2026-02-28-build-2026-02-28_094935` (**Latest**)
 
 > Este índice é o “ponteiro único” do baseline vigente. Qualquer atualização de baseline deve atualizar este arquivo.

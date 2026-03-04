@@ -3,7 +3,7 @@
 **Unidade:** UN1  
 **Timezone:** America/Sao_Paulo (BRT)  
 **DATA_BASELINE (vigente):** 2026-02-25  
-**ATUALIZADO_EM:** 2026-02-28 (BRT)  
+**ATUALIZADO_EM:** 2026-03-04 (BRT)  
 **Host (produção observado):** ubt  
 
 ---
@@ -219,4 +219,12 @@ Qualquer edição em `/var/lib/noc/baseline/` exige regenerar `SHA256SUMS_BASELI
 - SHA256 (release): 00b7f07e85e36f57fbb7cb257fe15725d6c95c550a1b607da0283be54f53128f
 - SHA256 (patched): 00b7f07e85e36f57fbb7cb257fe15725d6c95c550a1b607da0283be54f53128f
 - Backup do deploy: /opt/telegram-bot.bak_2026-02-28_175228
+---
+
+## GitHub Sync (baseline do código)
+
+- Tag/Release (código): `v2026.03.04-evidence-ux`
+- URL: https://github.com/marcelocsjunior/BOT.NOC.IA/releases/tag/v2026.03.04-evidence-ux
+- PR: #1 (merged)
+- Manifest (repo): `evidence_release_manifest.txt` (audit trail do release)
 
