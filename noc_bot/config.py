@@ -11,11 +11,13 @@ TZ_LOCAL = ZoneInfo(os.getenv("TZ_LOCAL", "America/Sao_Paulo"))
 #   BOT_VERSION=YYYY-MM-DD-dm-group-ux|build=YYYY-MM-DD_HHMMSS
 BOT_VERSION = os.getenv("BOT_VERSION", "2026-02-25-dm-group-ux")
 
+
 def env(name: str, default: str | None = None) -> str | None:
     v = os.getenv(name)
     if v is None or v == "":
         return default
     return v
+
 
 def must_env(*names: str) -> str:
     for n in names:
@@ -24,11 +26,13 @@ def must_env(*names: str) -> str:
             return v
     raise RuntimeError(f"Missing required env var (tried: {', '.join(names)})")
 
+
 def env_bool(name: str, default: bool = False) -> bool:
     v = env(name)
     if v is None:
         return default
     return v.strip().lower() in ("1", "true", "yes", "y", "on")
+
 
 def env_int(name: str, default: int) -> int:
     v = env(name)
@@ -38,6 +42,21 @@ def env_int(name: str, default: int) -> int:
         return int(v.strip())
     except Exception:
         return default
+
+
+def env_csv_ints(name: str) -> list[int]:
+    raw = env(name, "") or ""
+    out: list[int] = []
+    for item in raw.split(","):
+        s = item.strip()
+        if not s:
+            continue
+        try:
+            out.append(int(s))
+        except Exception:
+            continue
+    return out
+
 
 # Build id (rastreabilidade)
 BUILD_ID = env("BUILD_ID", env("BOT_BUILD", None))
@@ -62,6 +81,31 @@ TIMELINE_DEFAULT_N = env_int("NOC_TIMELINE_DEFAULT_N", 30)
 MAX_TIMELINE_N = env_int("NOC_MAX_TIMELINE_N", 200)
 
 GROUP_REPLY_MENTION_ONLY = env_bool("NOC_GROUP_MENTION_ONLY", True)
+
+# --- DM Consultiva / IA Assistiva ---
+DM_ASSISTANT_ENABLED = env_bool("DM_ASSISTANT_ENABLED", False)
+DM_ASSISTANT_SHADOW_MODE = env_bool("DM_ASSISTANT_SHADOW_MODE", False)
+DM_ASSISTANT_ALLOWED_CHAT_IDS = env_csv_ints("DM_ASSISTANT_ALLOWED_CHAT_IDS")
+
+DM_ASSISTANT_STYLE = (env("DM_ASSISTANT_STYLE", "light") or "light").strip().lower()
+if DM_ASSISTANT_STYLE not in ("light", "professional", "friendly"):
+    DM_ASSISTANT_STYLE = "light"
+
+DM_ASSISTANT_PROACTIVE = env_bool("DM_ASSISTANT_PROACTIVE", False)
+DM_ASSISTANT_MAX_REPLY_LINES = env_int("DM_ASSISTANT_MAX_REPLY_LINES", 3)
+DM_ASSISTANT_ENABLE_AI_FINISH = env_bool("DM_ASSISTANT_ENABLE_AI_FINISH", False)
+
+# Confidence mínima do parser consultivo
+_DM_ASSISTANT_MIN_CONFIDENCE_RAW = env("DM_ASSISTANT_MIN_CONFIDENCE", "0.60") or "0.60"
+try:
+    DM_ASSISTANT_MIN_CONFIDENCE = float(_DM_ASSISTANT_MIN_CONFIDENCE_RAW.strip())
+except Exception:
+    DM_ASSISTANT_MIN_CONFIDENCE = 0.60
+
+if DM_ASSISTANT_MIN_CONFIDENCE < 0:
+    DM_ASSISTANT_MIN_CONFIDENCE = 0.0
+elif DM_ASSISTANT_MIN_CONFIDENCE > 1:
+    DM_ASSISTANT_MIN_CONFIDENCE = 1.0
 
 # --- IA (Cloudflare Workers AI) ---
 AI_ENABLED = env_bool("AI_ENABLED", False)
@@ -96,7 +140,11 @@ WINDOW_ALIASES = {
     "30d": ["30d", "mês", "mes", "30 dias"],
 }
 
-NOISE_TOKENS = [t.strip().upper() for t in (env("NOC_NOISE_TOKENS", "SELFTEST,PUSH-TEST,UN1 TEST,TEST").split(",")) if t.strip()]
+NOISE_TOKENS = [
+    t.strip().upper()
+    for t in (env("NOC_NOISE_TOKENS", "SELFTEST,PUSH-TEST,UN1 TEST,TEST").split(","))
+    if t.strip()
+]
 
 
 @dataclass(frozen=True)
@@ -178,6 +226,7 @@ SVCS: dict[str, Svc] = {
         ),
     ),
 }
+
 
 def severity_label(check_name: str, wan_mundi_state: str | None, wan_vale_state: str | None) -> str:
     c = (check_name or "").upper()
