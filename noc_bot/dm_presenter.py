@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 from __future__ import annotations
 
-from typing import Dict, List, Literal, TypedDict
+from typing import List, Literal, TypedDict
 
 from .config import SVCS
-from .dm_intents import ServiceKey
+from .dm_intents import PeriodKey, ServiceKey
 from .dm_queries import QueryResult
 from .utils import fmt_dur, fmt_when_abs
 
@@ -40,11 +40,11 @@ def _fmt_ts(ts: str | None) -> str:
         return ts
 
 
-def _trim_lines(text: str, max_lines: int = 3) -> str:
-    lines = [ln.strip() for ln in (text or "").splitlines() if ln.strip()]
-    if not lines:
+def _join_lines(lines: List[str], max_lines: int = 3) -> str:
+    clean = [ln.strip() for ln in lines if ln and str(ln).strip()]
+    if not clean:
         return "Não consegui montar a resposta."
-    return "\n".join(lines[:max_lines])
+    return "\n".join(clean[:max_lines])
 
 
 def _safe_for_ai(result: QueryResult) -> bool:
@@ -77,6 +77,36 @@ def _base_buttons(result: QueryResult) -> List[PresenterButton]:
     return buttons[:2]
 
 
+def _period_phrase(period: PeriodKey) -> str:
+    mapping = {
+        "now": "agora",
+        "today": "hoje",
+        "yesterday": "ontem",
+        "24h": "nas últimas 24h",
+        "7d": "nos últimos 7 dias",
+        "30d": "nos últimos 30 dias",
+        "week": "nesta semana",
+        "month": "neste mês",
+        "unspecified": "na janela analisada",
+    }
+    return mapping.get(period, "na janela analisada")
+
+
+def _summary_phrase(period: PeriodKey) -> str:
+    mapping = {
+        "now": "de agora",
+        "today": "de hoje",
+        "yesterday": "de ontem",
+        "24h": "das últimas 24h",
+        "7d": "dos últimos 7 dias",
+        "30d": "dos últimos 30 dias",
+        "week": "desta semana",
+        "month": "deste mês",
+        "unspecified": "da janela analisada",
+    }
+    return mapping.get(period, "da janela analisada")
+
+
 def _render_status(result: QueryResult) -> str:
     service = result["service"]
     data = result["data"]
@@ -88,20 +118,24 @@ def _render_status(result: QueryResult) -> str:
         duration = fmt_dur(data.get("duration_sec"))
 
         if state == "DOWN":
-            return _trim_lines(
-                f"{label} está DOWN.\n"
-                f"Desde: {since_ts}\n"
-                f"Duração: {duration}"
+            return _join_lines(
+                [
+                    f"{label} está DOWN.",
+                    f"Desde: {since_ts}",
+                    f"Duração: {duration}",
+                ]
             )
 
         if state == "UP":
-            return _trim_lines(
-                f"{label} está UP.\n"
-                f"Última alteração: {since_ts}\n"
-                f"Janela consultada: {result['period']}"
+            return _join_lines(
+                [
+                    f"{label} está UP.",
+                    f"Última alteração: {since_ts}",
+                    f"Consulta: {_period_phrase(result['period'])}",
+                ]
             )
 
-        return _trim_lines(f"{label}: estado atual desconhecido.")
+        return _join_lines([f"{label}: estado atual desconhecido."])
 
     services = data.get("services", {})
     parts: List[str] = []
@@ -118,7 +152,7 @@ def _render_status(result: QueryResult) -> str:
     if not parts:
         return "Não encontrei status atual dos serviços."
 
-    return _trim_lines(" | ".join(parts), max_lines=3)
+    return _join_lines([" | ".join(parts)], max_lines=3)
 
 
 def _render_failures(result: QueryResult) -> str:
@@ -127,17 +161,17 @@ def _render_failures(result: QueryResult) -> str:
     data = result["data"]
 
     count = int(data.get("count", 0))
-    window_label = data.get("window_label") or result["period"]
     last_down_ts = _fmt_ts(data.get("last_down_ts"))
     last_up_ts = _fmt_ts(data.get("last_up_ts"))
     last_duration = fmt_dur(data.get("last_duration_sec"))
     last_cid = data.get("last_cid")
+    period_phrase = _period_phrase(result["period"])
 
     if count <= 0:
-        return _trim_lines(f"{label} não apresentou quedas em {window_label}.")
+        return _join_lines([f"{label} não apresentou quedas {period_phrase}."])
 
     lines = [
-        f"{label} teve {count} queda(s) em {window_label}.",
+        f"{label} teve {count} queda(s) {period_phrase}.",
         f"Última: {last_down_ts}" + (f" → {last_up_ts}" if last_up_ts != "-" else ""),
     ]
 
@@ -150,7 +184,7 @@ def _render_failures(result: QueryResult) -> str:
     if extra:
         lines.append(" | ".join(extra))
 
-    return _trim_lines("\n".join(lines))
+    return _join_lines(lines)
 
 
 def _render_failure_count(result: QueryResult) -> str:
@@ -159,23 +193,23 @@ def _render_failure_count(result: QueryResult) -> str:
     data = result["data"]
 
     count = int(data.get("count", 0))
-    window_label = data.get("window_label") or result["period"]
     top_events = data.get("top_events", [])
+    period_phrase = _period_phrase(result["period"])
 
     if count <= 0:
-        return _trim_lines(f"Não encontrei falhas de {label} em {window_label}.")
+        return _join_lines([f"Não encontrei falhas de {label} {period_phrase}."])
 
-    first_line = f"Foram {count} falha(s) de {label} em {window_label}."
+    first_line = f"Foram {count} falha(s) de {label} {period_phrase}."
     if not top_events:
-        return _trim_lines(first_line)
+        return _join_lines([first_line])
 
     last_ev = top_events[-1]
     ts = _fmt_ts(last_ev.get("ts"))
     cid = last_ev.get("cid")
 
     if cid:
-        return _trim_lines(f"{first_line}\nÚltima: {ts}\nCID: {cid}")
-    return _trim_lines(f"{first_line}\nÚltima: {ts}")
+        return _join_lines([first_line, f"Última: {ts}", f"CID: {cid}"])
+    return _join_lines([first_line, f"Última: {ts}"])
 
 
 def _render_last_cid(result: QueryResult) -> str:
@@ -188,25 +222,27 @@ def _render_last_cid(result: QueryResult) -> str:
     state = data.get("state", "UNKNOWN")
 
     if not cid:
-        return _trim_lines(f"Não encontrei CID recente para {label}.")
+        return _join_lines([f"Não encontrei CID recente para {label}."])
 
-    return _trim_lines(
-        f"Último CID de {label}: {cid}.\n"
-        f"Evento: {event_ts}\n"
-        f"Estado: {state}"
+    return _join_lines(
+        [
+            f"Último CID de {label}: {cid}.",
+            f"Evento: {event_ts}",
+            f"Estado: {state}",
+        ]
     )
 
 
 def _render_summary(result: QueryResult) -> str:
     data = result["data"]
     total_incidents = int(data.get("total_incidents", 0))
-    window_label = data.get("window_label") or result["period"]
     services = data.get("services", {})
+    summary_phrase = _summary_phrase(result["period"])
 
     if total_incidents <= 0:
-        return _trim_lines(f"Nenhum incidente encontrado em {window_label}.")
+        return _join_lines([f"Nenhum incidente encontrado {summary_phrase}."])
 
-    lines = [f"Resumo de {window_label}: {total_incidents} incidente(s)."]
+    lines = [f"Resumo {summary_phrase}: {total_incidents} incidente(s)."]
 
     ranked = []
     for code, row in services.items():
@@ -218,7 +254,7 @@ def _render_summary(result: QueryResult) -> str:
             continue
         lines.append(f"{_svc_label(code)}: {count} ocorrência(s), indisponível {fmt_dur(down_sec)}")
 
-    return _trim_lines("\n".join(lines))
+    return _join_lines(lines)
 
 
 def _render_compare(result: QueryResult) -> str:
@@ -228,15 +264,26 @@ def _render_compare(result: QueryResult) -> str:
     winner_count = int(data.get("winner_count", 0))
     runner_up_service = data.get("runner_up_service")
     runner_up_count = int(data.get("runner_up_count", 0))
-    window_label = data.get("window_label") or result["period"]
+    period_phrase = _period_phrase(result["period"])
 
     if not winner_service:
-        return _trim_lines("Não consegui comparar os serviços nessa janela.")
+        return _join_lines(["Não consegui comparar os serviços nessa janela."])
 
-    lines = [f"{_svc_label(winner_service)} teve {winner_count} ocorrência(s) em {window_label}."]
-    if runner_up_service:
+    if winner_count <= 0:
+        return _join_lines([f"Não encontrei ocorrências {period_phrase}."])
+
+    if runner_up_service and winner_service != runner_up_service and winner_count == runner_up_count:
+        return _join_lines(
+            [
+                f"Houve empate entre {_svc_label(winner_service)} e {_svc_label(runner_up_service)} {period_phrase}.",
+                f"Ambos tiveram {winner_count} ocorrência(s).",
+            ]
+        )
+
+    lines = [f"{_svc_label(winner_service)} teve {winner_count} ocorrência(s) {period_phrase}."]
+    if runner_up_service and runner_up_service != winner_service:
         lines.append(f"{_svc_label(runner_up_service)} veio depois com {runner_up_count}.")
-    return _trim_lines("\n".join(lines))
+    return _join_lines(lines)
 
 
 def _render_recommendation(result: QueryResult) -> str:
@@ -255,7 +302,7 @@ def _render_recommendation(result: QueryResult) -> str:
     if last_cid:
         lines.append(f"Último CID: {last_cid}")
 
-    return _trim_lines("\n".join(lines))
+    return _join_lines(lines)
 
 
 def _render_fallback(result: QueryResult) -> str:
@@ -278,7 +325,7 @@ def render_factual(result: QueryResult) -> PresenterOutput:
     if not result["ok"]:
         text = _render_fallback(result)
         return {
-            "text": _trim_lines(text),
+            "text": _join_lines([text]),
             "safe_for_ai_polish": False,
             "buttons": [],
             "tone": "professional",
@@ -308,7 +355,7 @@ def render_factual(result: QueryResult) -> PresenterOutput:
         tone = "light"
 
     return {
-        "text": _trim_lines(text),
+        "text": _join_lines([text]),
         "safe_for_ai_polish": _safe_for_ai(result),
         "buttons": _base_buttons(result),
         "tone": tone,

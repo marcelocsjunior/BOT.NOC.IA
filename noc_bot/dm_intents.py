@@ -92,7 +92,6 @@ _PERIOD_REQUIRED: set[IntentName] = {
     "queda_servico_janela",
     "contagem_falhas",
     "resumo_periodo",
-    "comparativo_servico",
 }
 
 _SERVICE_OPTIONAL: set[IntentName] = {
@@ -185,6 +184,9 @@ def detect_intent(text: str, min_confidence: float = _MIN_CONFIDENCE_DEFAULT) ->
     service = cast(Optional[ServiceKey], service_hits[0]) if len(service_hits) == 1 else None
     period = _extract_period(normalized_text)
     intent = _detect_intent_name(normalized_text)
+
+    if intent == "comparativo_servico" and period == "unspecified":
+        period = "7d"
 
     has_cid_word = bool(re.search(r"\b(cid|codigo|id)\b", normalized_text))
     has_compare_word = bool(re.search(r"\b(pior|mais problemas|mais instavel|mais quedas)\b", normalized_text))
