@@ -84,9 +84,38 @@ _INTENT_PATTERNS: list[tuple[IntentName, re.Pattern[str]]] = [
     ),
     (
         "status_atual",
-        re.compile(r"\b(status|como esta|ta tudo bem|tem algo estranho|tudo ok|tudo bem)\b"),
+        re.compile(r"\b(status|como esta|ta tudo bem|tem algo estranho|tudo ok|tudo bem|ok ai|ok a[ií])\b"),
     ),
 ]
+
+_STRICT_GLOBAL_STATUS_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"^status(?: atual| geral)?[!??. ]*$"),
+    re.compile(r"^painel(?: geral)?[!??. ]*$"),
+    re.compile(r"^situacao atual[!??. ]*$"),
+    re.compile(r"^visao geral[!??. ]*$"),
+    re.compile(r"^como esta agora[!??. ]*$"),
+]
+
+_CONFIRM_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"^tem certeza[!??. ]*$"),
+    re.compile(r"^certeza[!??. ]*$"),
+    re.compile(r"^confirma[!??. ]*$"),
+    re.compile(r"^confere[!??. ]*$"),
+    re.compile(r"^serio[!??. ]*$"),
+]
+
+_OUT_OF_SCOPE_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"\b(speed\s*test|speedtest)\b"),
+    re.compile(r"\b(site|link|url|endereco|endereço)\b.*\b(speed\s*test|speedtest)\b"),
+]
+
+_COMPLAINT_PATTERN = re.compile(
+    r"\b("
+    r"lento|lenta|lentidao|travando|trava|travou|travamento|"
+    r"caindo|cai|caiu|cair|queda|quedas|instavel|instabilidade|"
+    r"ruim|reclama|reclamacao"
+    r")\b"
+)
 
 _PERIOD_REQUIRED: set[IntentName] = {
     "queda_servico_janela",
@@ -109,6 +138,10 @@ def _normalize_text(text: str) -> str:
     text = "".join(ch for ch in text if not unicodedata.combining(ch))
     text = re.sub(r"\s+", " ", text)
     return text
+
+
+def normalize_text(text: str) -> str:
+    return _normalize_text(text)
 
 
 def _compile_alias_pattern(alias_norm: str) -> re.Pattern[str]:
@@ -151,11 +184,21 @@ def _extract_service_hits(normalized_text: str) -> list[str]:
     return hits
 
 
+def extract_service_hits(text: str, *, normalized: bool = False) -> list[str]:
+    normalized_text = text if normalized else _normalize_text(text)
+    return _extract_service_hits(normalized_text)
+
+
 def _extract_service(normalized_text: str) -> Optional[ServiceKey]:
     hits = _extract_service_hits(normalized_text)
     if len(hits) == 1:
         return cast(ServiceKey, hits[0])
     return None
+
+
+def extract_service(text: str, *, normalized: bool = False) -> Optional[ServiceKey]:
+    normalized_text = text if normalized else _normalize_text(text)
+    return _extract_service(normalized_text)
 
 
 def _extract_period(normalized_text: str) -> PeriodKey:
@@ -178,6 +221,30 @@ def _detect_intent_name(normalized_text: str) -> IntentName:
     return "unknown"
 
 
+def is_strict_global_status_request(text: str, *, normalized: bool = False) -> bool:
+    normalized_text = text if normalized else _normalize_text(text)
+    return any(pattern.match(normalized_text) for pattern in _STRICT_GLOBAL_STATUS_PATTERNS)
+
+
+
+def is_confirmation_request(text: str, *, normalized: bool = False) -> bool:
+    normalized_text = text if normalized else _normalize_text(text)
+    return any(pattern.match(normalized_text) for pattern in _CONFIRM_PATTERNS)
+
+
+
+def is_out_of_scope_request(text: str, *, normalized: bool = False) -> bool:
+    normalized_text = text if normalized else _normalize_text(text)
+    return any(pattern.search(normalized_text) for pattern in _OUT_OF_SCOPE_PATTERNS)
+
+
+
+def looks_like_complaint(text: str, *, normalized: bool = False) -> bool:
+    normalized_text = text if normalized else _normalize_text(text)
+    return bool(_COMPLAINT_PATTERN.search(normalized_text))
+
+
+
 def detect_intent(text: str, min_confidence: float = _MIN_CONFIDENCE_DEFAULT) -> IntentData:
     normalized_text = _normalize_text(text)
     service_hits = _extract_service_hits(normalized_text)
@@ -185,12 +252,28 @@ def detect_intent(text: str, min_confidence: float = _MIN_CONFIDENCE_DEFAULT) ->
     period = _extract_period(normalized_text)
     intent = _detect_intent_name(normalized_text)
 
+    if is_strict_global_status_request(normalized_text, normalized=True):
+        intent = "status_atual"
+        service = None
+        service_hits = []
+        if period == "unspecified":
+            period = "now"
+
+    if intent == "unknown" and service is not None and not looks_like_complaint(normalized_text, normalized=True):
+        intent = "status_atual"
+        if period == "unspecified":
+            period = "now"
+
+    if intent == "status_atual" and period == "unspecified":
+        period = "now"
+
     if intent == "comparativo_servico" and period == "unspecified":
         period = "7d"
 
     has_cid_word = bool(re.search(r"\b(cid|codigo|id)\b", normalized_text))
     has_compare_word = bool(re.search(r"\b(pior|mais problemas|mais instavel|mais quedas)\b", normalized_text))
-    has_status_word = bool(re.search(r"\b(status|como esta|tem algo estranho|tudo ok|tudo bem)\b", normalized_text))
+    has_status_word = bool(re.search(r"\b(status|como esta|tem algo estranho|tudo ok|tudo bem|ok ai|ok a[ií])\b", normalized_text))
+    is_service_probe = bool(service is not None and intent == "status_atual")
 
     entities: Dict[str, Any] = {
         "service_hits": service_hits,
@@ -198,6 +281,10 @@ def detect_intent(text: str, min_confidence: float = _MIN_CONFIDENCE_DEFAULT) ->
         "has_cid_word": has_cid_word,
         "has_compare_word": has_compare_word,
         "has_status_word": has_status_word,
+        "is_service_probe": is_service_probe,
+        "is_strict_global_status": is_strict_global_status_request(normalized_text, normalized=True),
+        "is_confirmation": is_confirmation_request(normalized_text, normalized=True),
+        "is_out_of_scope": is_out_of_scope_request(normalized_text, normalized=True),
     }
 
     confidence = 0.0
@@ -225,7 +312,7 @@ def detect_intent(text: str, min_confidence: float = _MIN_CONFIDENCE_DEFAULT) ->
         if period != "unspecified" or intent not in _PERIOD_REQUIRED:
             confidence += 0.10
 
-        if has_cid_word or has_compare_word or has_status_word:
+        if has_cid_word or has_compare_word or has_status_word or is_service_probe:
             confidence += 0.05
 
         confidence = min(confidence, 0.98)
@@ -234,7 +321,7 @@ def detect_intent(text: str, min_confidence: float = _MIN_CONFIDENCE_DEFAULT) ->
             fallback_reason = "low_confidence"
 
     return {
-        "version": "dm.intent.v1",
+        "version": "dm.intent.v2",
         "unit": UNIT,
         "raw_text": text or "",
         "normalized_text": normalized_text,
