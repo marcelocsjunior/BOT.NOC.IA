@@ -106,6 +106,17 @@ Regras duras:
   - PR: #1 (merged)
   - Manifest: `evidence_release_manifest.txt` (main)
 
+- Release 2 (FIX6 / DM consultiva): `v2026.03.15-fix6-dm-consultiva`
+  - GitHub Tag: https://github.com/marcelocsjunior/BOT.NOC.IA/releases/tag/v2026.03.15-fix6-dm-consultiva
+  - PR: #8 (merged)
+  - Merge commit: `cbce6ee`
+  - Commit FIX6: `c610a2a`
+  - Status: homologada em runtime real na VM bot
+  - Comportamento validado:
+    - serviço explícito na mensagem atual vence contexto anterior
+    - "tem certeza?" reutiliza o último contexto útil
+    - "status atual" sempre resolve para painel geral
+    - perguntas fora de escopo não caem em painel/home
 
 
 - Release 0 (AS-RUNNING): `un1-2026-02-28-build-2026-02-28_094935` (**Latest**)
