@@ -501,6 +501,12 @@ Contratos do tooling (produção):
 
 ## 11) Changelog (últimas mudanças relevantes)
 
+- 2026-03-15 — PR #8 mergeada em `main`, consolidando a DM consultiva com parser determinístico, query factual, presenter e roteamento consultivo.
+- 2026-03-15 — FIX6 homologada em runtime real na VM bot e tagueada como `v2026.03.15-fix6-dm-consultiva`.
+- 2026-03-15 — DM consultiva: serviço explícito na mensagem atual passa a vencer contexto anterior.
+- 2026-03-15 — DM consultiva: mensagens de confirmação curta ("tem certeza?") passam a reutilizar o último contexto útil.
+- 2026-03-15 — DM consultiva: "status atual" passa a resolver sempre para painel geral.
+- 2026-03-15 — DM consultiva: perguntas fora de escopo deixam de cair em painel/home.
 - 2026-02-28 — Release/Deploy: `noc-release` (produção) padroniza release ZIP + deploy seguro com rollback e sanity gate (ignora `400 Bad Request`; falha só em erro fatal).
 - 2026-02-28 — Cofre persistente: `/var/lib/noc/releases` com `SHA256SUMS`, `CHANGELOG_RELEASES.log` e symlink `LAST_RELEASE.zip`.
 - 2026-02-28 — Evidência: integridade verificada (hash de arquivo em produção bate com arquivo dentro de `LAST_RELEASE.zip`).
