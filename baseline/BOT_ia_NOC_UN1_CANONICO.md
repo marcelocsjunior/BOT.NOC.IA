@@ -2,7 +2,7 @@
 
 **Unidade:** UN1  
 **Timezone:** America/Sao_Paulo (BRT)  
-**ATUALIZADO_EM:** 2026-02-28 (BRT)  
+**ATUALIZADO_EM:** 2026-03-15 (BRT)  
 **DATA_BASELINE (baseline vigente):** 2026-02-25  
 **BOT_VERSION|build (último observado / exemplo):** `2026-02-28-dm-group-ux|build=2026-02-28_094935`  
 **Política:** este arquivo é a **única fonte da verdade** do projeto (sem anexos). Saídas “effective config” devem ser **coladas** nas seções de *snapshots* abaixo.  
@@ -328,6 +328,20 @@ Teclado DM padrão (rodapé):
 - Em callbacks, preferir **edit_message_text**.
 - Se Telegram retornar `Message is not modified`, não enviar nova mensagem.
 
+### 5.5 DM consultiva — FIX6 (2026-03-15)
+
+Regras funcionais validadas em runtime real:
+- serviço explicitamente citado na mensagem atual tem prioridade sobre contexto anterior
+- mensagens de confirmação curta, como "tem certeza?", reutilizam o último contexto útil
+- "status atual" é sempre tratado como status geral
+- perguntas fora de escopo não acionam painel/home
+- probes curtos por serviço, como "Escallo" e "Telefone", resolvem como status factual do serviço
+
+Referências:
+- PR #8 (merged)
+- Merge commit: `cbce6ee`
+- Commit FIX6: `c610a2a`
+- Tag: `v2026.03.15-fix6-dm-consultiva`
 ## 6) UX “técnico” (Grupo NOC)
 - Anti-ruído: responde por **@menção** ou **reply**.
 - Botões técnicos: Status / Analyze / Timeline / Evidências / Fonte.
