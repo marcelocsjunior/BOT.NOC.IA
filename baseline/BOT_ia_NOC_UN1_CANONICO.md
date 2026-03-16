@@ -3,7 +3,7 @@
 **Unidade:** UN1  
 **Timezone:** America/Sao_Paulo (BRT)  
 **ATUALIZADO_EM:** 2026-03-15 (BRT)  
-**DATA_BASELINE (baseline vigente):** 2026-02-25  
+**DATA_BASELINE (baseline vigente):** 2026-03-15  
 **BOT_VERSION|build (último observado / exemplo):** `2026-02-28-dm-group-ux|build=2026-02-28_094935`  
 **Política:** este arquivo é a **única fonte da verdade** do projeto (sem anexos). Saídas “effective config” devem ser **coladas** nas seções de *snapshots* abaixo.  
 **Baseline de referência (histórico, não-anexado):** `AS_BUILT_ATUAL=UN1_AS_BUILT_SNAPSHOT_2026-02-25_v11.md` | `DOC_MASTER_ATUAL=BOT_ia_NOC_UN1_Documento_Master_2026-02-25_v7.md`  
@@ -342,6 +342,7 @@ Referências:
 - Merge commit: `cbce6ee`
 - Commit FIX6: `c610a2a`
 - Tag: `v2026.03.15-fix6-dm-consultiva`
+
 ## 6) UX “técnico” (Grupo NOC)
 - Anti-ruído: responde por **@menção** ou **reply**.
 - Botões técnicos: Status / Analyze / Timeline / Evidências / Fonte.
