@@ -136,14 +136,3 @@ Scripts (fonte de verdade):
 Nota operacional:
 - O unit `noc-integrity-check.service` roda hardenizado e pode estar sem rede (ex.: `PrivateNetwork=true`).
   O alerta Telegram deve rodar fora desse unit (ou em unit separado com rede).
-
-- URL: https://github.com/marcelocsjunior/BOT.NOC.IA/releases/tag/v2026.03.15-fix6-dm-consultiva
-- PR: #8 (merged)
-- Merge commit: `cbce6ee`
-- Commit FIX6: `c610a2a`
-- Evidência: FIX6 homologada em runtime real na VM bot
-- Comportamento validado:
-  - serviço explícito na mensagem atual vence contexto anterior
-  - "tem certeza?" reutiliza o último contexto útil
-  - "status atual" sempre resolve para painel geral
-  - perguntas fora de escopo não caem em painel/home
