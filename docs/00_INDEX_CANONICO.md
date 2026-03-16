@@ -2,8 +2,9 @@
 **DATA_BASELINE (vigente):** 2026-03-15
 **ATUALIZADO_EM:** 2026-03-15 (BRT)
 
-- `BOT_VERSION=v2026.03.15-dm-fix5|build=2026-03-15_182955
-BUILD_ID=2026-03-15_182955
+**Runtime (build em execução no Collector UN1):**
+- `BOT_VERSION=v2026.03.15-dm-fix6|build=2026-03-15_182955`
+- `BUILD_ID=2026-03-15_182955`
 
 ---
 
@@ -136,7 +137,6 @@ Nota operacional:
 - O unit `noc-integrity-check.service` roda hardenizado e pode estar sem rede (ex.: `PrivateNetwork=true`).
   O alerta Telegram deve rodar fora desse unit (ou em unit separado com rede).
 
-- Tag/Release (código): `v2026.03.15-fix6-dm-consultiva`
 - URL: https://github.com/marcelocsjunior/BOT.NOC.IA/releases/tag/v2026.03.15-fix6-dm-consultiva
 - PR: #8 (merged)
 - Merge commit: `cbce6ee`
