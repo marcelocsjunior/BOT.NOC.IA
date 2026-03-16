@@ -4,7 +4,7 @@
 **Timezone:** America/Sao_Paulo (BRT)  
 **ATUALIZADO_EM:** 2026-03-15 (BRT)  
 **DATA_BASELINE (baseline vigente):** 2026-03-15  
-**BOT_VERSION|build (último observado / exemplo):** `2026-02-28-dm-group-ux|build=2026-02-28_094935`  
+**BOT_VERSION|build (último observado / /where em 2026-03-15):** `v2026.03.15-dm-fix6|build=2026-03-15_182955`  
 **Política:** este arquivo é a **única fonte da verdade** do projeto (sem anexos). Saídas “effective config” devem ser **coladas** nas seções de *snapshots* abaixo.  
 **Baseline de referência (histórico, não-anexado):** `AS_BUILT_ATUAL=UN1_AS_BUILT_SNAPSHOT_2026-02-25_v11.md` | `DOC_MASTER_ATUAL=BOT_ia_NOC_UN1_Documento_Master_2026-02-25_v7.md`  
 **Objetivo:** NOC operacional auditável para dual-WAN (MikroTik RouterOS 7) com ingestão confiável, histórico consultável, UX “produto” no Telegram (DM) e UX técnica no grupo.
@@ -64,7 +64,7 @@
 6. `SQLite DB` → `/var/lib/noc/noc.db` (WAL) | effective: **N/D**
 7. `tailer state/offset` → `/var/lib/noc/tailer.state.json` | effective: **N/D**
 8. `schema campo do check` → `check_name` | effective: **N/D**
-9. `/where` → `BOT_VERSION|build` + `SOURCE=DB/LOG` + freshness + paths | effective (journal): `version=2026-02-28-dm-group-ux|build=2026-02-28_094935`
+9. `/where` → `BOT_VERSION|build` + `SOURCE=DB/LOG` + freshness + paths | effective (/where 2026-03-15): `BOT_VERSION=v2026.03.15-dm-fix6|build=2026-03-15_182955`
 10. `release/deploy` → tooling: `/usr/local/sbin/noc-release` + cofre `/var/lib/noc/releases` (`SHA256SUMS` OK, `LAST_RELEASE.zip` OK) + backup `/opt/telegram-bot.bak_2026-02-28_114719`
 
 
@@ -178,20 +178,21 @@ RestartSec=3
 - `ls -lah /var/lib/noc/noc.db*` (provar WAL) → **N/D**
 
 **3.4.5 /where (1 exemplo real):**
-- saída do `/where` (com token redigido) → Exemplo real (2026-02-27, token redigido):
+- saída do `/where` (com token redigido) → Exemplo real (2026-03-15, token redigido):
 ```
-BOT_VERSION=2026-02-26-dm-group-ux|build=2026-02-26_031500
-build=2026-02-26_031500
-BUILD_ID=2026-02-26_031500
+BOT_VERSION=v2026.03.15-dm-fix6|build=2026-03-15_182955
+build=2026-03-15_182955
+BUILD_ID=2026-03-15_182955
 HOST=ubt
 UNIT=UN1
 SOURCE=DB (ok)
 DB=/var/lib/noc/noc.db
 LOG=/var/log/mikrotik/un1.log
-last_db_ts=2026-02-27 01:54:58-0300
-last_log_ts=2026-02-27 01:54:58-0300
-freshness_s=779
+last_db_ts=2026-03-15 21:15:18-0300
+last_log_ts=2026-03-15 21:15:18-0300
+freshness_s=3910
 ```
+
 
 **3.4.6 Release/artefatos (produção):**
 - ZIP release (limpo): `/tmp/noc_bot_release_2026-02-27_022037.zip`
@@ -674,4 +675,3 @@ CREATE INDEX idx_events_unit_check_ts ON events(unit, check_name, ts);
 -rw-r----- 1 telegram-bot telegram-bot 32K Feb 28 15:09 /var/lib/noc/noc.db-shm
 -rw-r----- 1 telegram-bot telegram-bot 69K Feb 28 15:02 /var/lib/noc/noc.db-wal
 ```
-
