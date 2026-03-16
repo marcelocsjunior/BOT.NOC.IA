@@ -1,7 +1,7 @@
 # 00_INDEX_CANONICO — BOT ia NOC (UN1) — BOT.NOC.IA
+**DATA_BASELINE (vigente):** 2026-03-15
+**ATUALIZADO_EM:** 2026-03-15 (BRT)
 
-**Data baseline (AS-RUNNING):** 2026-03-01_193042  
-**Runtime (build em execução no Collector UN1):**
 - `BOT_VERSION=2026-02-28-dm-group-ux|build=2026-02-28_094935`
 - `BUILD_ID=2026-02-28_094935`
 
@@ -135,3 +135,15 @@ Scripts (fonte de verdade):
 Nota operacional:
 - O unit `noc-integrity-check.service` roda hardenizado e pode estar sem rede (ex.: `PrivateNetwork=true`).
   O alerta Telegram deve rodar fora desse unit (ou em unit separado com rede).
+
+- Tag/Release (código): `v2026.03.15-fix6-dm-consultiva`
+- URL: https://github.com/marcelocsjunior/BOT.NOC.IA/releases/tag/v2026.03.15-fix6-dm-consultiva
+- PR: #8 (merged)
+- Merge commit: `cbce6ee`
+- Commit FIX6: `c610a2a`
+- Evidência: FIX6 homologada em runtime real na VM bot
+- Comportamento validado:
+  - serviço explícito na mensagem atual vence contexto anterior
+  - "tem certeza?" reutiliza o último contexto útil
+  - "status atual" sempre resolve para painel geral
+  - perguntas fora de escopo não caem em painel/home
