@@ -2,8 +2,8 @@
 
 **Unidade:** UN1  
 **Timezone:** America/Sao_Paulo (BRT)  
-**DATA_BASELINE (vigente):** 2026-02-25  
-**ATUALIZADO_EM:** 2026-03-04 (BRT)  
+**DATA_BASELINE (vigente):** 2026-03-15
+**ATUALIZADO_EM:** 2026-03-15 (BRT)
 **Host (produção observado):** ubt  
 
 ---
@@ -227,4 +227,16 @@ Qualquer edição em `/var/lib/noc/baseline/` exige regenerar `SHA256SUMS_BASELI
 - URL: https://github.com/marcelocsjunior/BOT.NOC.IA/releases/tag/v2026.03.04-evidence-ux
 - PR: #1 (merged)
 - Manifest (repo): `evidence_release_manifest.txt` (audit trail do release)
+
+- Tag/Release (código): `v2026.03.15-fix6-dm-consultiva`
+- URL: https://github.com/marcelocsjunior/BOT.NOC.IA/releases/tag/v2026.03.15-fix6-dm-consultiva
+- PR: #8 (merged)
+- Merge commit: `cbce6ee`
+- Commit FIX6: `c610a2a`
+- Evidência: FIX6 homologada em runtime real na VM bot
+- Comportamento validado:
+  - serviço explícito na mensagem atual vence contexto anterior
+  - "tem certeza?" reutiliza o último contexto útil
+  - "status atual" sempre resolve para painel geral
+  - perguntas fora de escopo não caem em painel/home
 
