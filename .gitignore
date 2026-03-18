@@ -22,3 +22,4 @@ tailer.state.json
 runbooks/_packages/*.zip
 *.zip
 *.log
+_reconcile/

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Defaults (ajuste via env se quiser)
-VM_BOT_HOST="${VM_BOT_HOST:-192.168.88.108}"
+VM_BOT_HOST="${VM_BOT_HOST:-192.168.1.4}"
 VM_BOT_USER="${VM_BOT_USER:-bio}"
 
 REMOTE_BASE="${REMOTE_BASE:-/opt/telegram-bot}"
