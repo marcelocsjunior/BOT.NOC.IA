@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import inspect
 from telegram import Update
+from telegram.error import BadRequest
 from telegram.ext import ContextTypes
 
 from .commands import (
@@ -24,9 +25,13 @@ from .commands import (
 from ..telegram_ui import build_dm_keyboard, build_group_keyboard
 
 
-def _kb(update: Update):
+def _is_dm(update: Update) -> bool:
     chat = update.effective_chat
-    if chat and getattr(chat, "type", "") == "private":
+    return bool(chat and getattr(chat, "type", "") == "private")
+
+
+def _kb(update: Update):
+    if _is_dm(update):
         return build_dm_keyboard()
     return build_group_keyboard()
 
@@ -38,6 +43,28 @@ def _has_n_params(fn, n: int) -> bool:
         return True
 
 
+async def _send_callback_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
+    q = update.callback_query
+    if q and _is_dm(update):
+        try:
+            await q.edit_message_text(text=text, reply_markup=_kb(update), disable_web_page_preview=True)
+            return
+        except BadRequest as exc:
+            if "Message is not modified" in str(exc):
+                return
+        except Exception:
+            pass
+
+    chat = update.effective_chat
+    if chat:
+        await context.bot.send_message(
+            chat_id=chat.id,
+            text=text,
+            reply_markup=_kb(update),
+            disable_web_page_preview=True,
+        )
+
+
 async def _route_evidence(update: Update, context: ContextTypes.DEFAULT_TYPE, data: str) -> bool:
     """Roteamento determinístico de evidências."""
     if data == "evm":
@@ -46,7 +73,6 @@ async def _route_evidence(update: Update, context: ContextTypes.DEFAULT_TYPE, da
 
     if data.startswith("evp:"):
         svc = data.split(":", 1)[1]
-        # compat: cmd_evidence_request(update, context, svc) OU (update, context, svc, window)
         if _has_n_params(cmd_evidence_request, 4):
             await cmd_evidence_request(update, context, svc, "24h")
         else:
@@ -71,7 +97,6 @@ async def _route_evidence(update: Update, context: ContextTypes.DEFAULT_TYPE, da
         parts = data.split(":")
         svc = parts[1] if len(parts) > 1 else "TEL"
         win = parts[2] if len(parts) > 2 else "24h"
-        # compat: cmd_evidence_ticket(update, context, svc, win) OU (update, context, svc)
         if _has_n_params(cmd_evidence_ticket, 4):
             await cmd_evidence_ticket(update, context, svc, win)
         else:
@@ -88,18 +113,15 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     data = (q.data or "").strip()
 
-    # evita spinner
     try:
         await q.answer()
     except Exception:
         pass
 
-    # 1) Evidências
     if await _route_evidence(update, context, data):
         return
 
-    # 2) DM — painel / disponibilidade / qualidade
-    if data == "home":
+    if data in {"home", "dm:home", "root"}:
         await cmd_dm_home(update, context)
         return
 
@@ -108,7 +130,7 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await cmd_dm_unit(update, context, unit)
         return
 
-    if data in ("sup:now", "dm:panel"):
+    if data in {"sup:now", "dm:panel", "panel"}:
         await cmd_supervisor_now(update, context, user_text="(callback)")
         return
 
@@ -128,17 +150,14 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await cmd_supervisor_summary(update, context, window="7d")
         return
 
-    # 3) Atendimento (2h)
     if data == "att:2h":
         await cmd_attendance_2h(update, context, user_text="(callback)")
         return
 
-    # 4) Diagnóstico
     if data == "where":
         await cmd_where(update, context)
         return
 
-    # 5) Grupo — técnico
     if data == "status":
         await cmd_status(update, context)
         return
@@ -158,10 +177,8 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await cmd_analyze(update, context)
         return
 
-    # unknown
-    await context.bot.send_message(
-        chat_id=update.effective_chat.id,
-        text=f"Callback não reconhecido: {data}",
-        reply_markup=_kb(update),
-        disable_web_page_preview=True,
+    await _send_callback_text(
+        update,
+        context,
+        f"Ação não reconhecida: {data}\nUse os botões do painel, evidências, atendimento ou diagnóstico.",
     )

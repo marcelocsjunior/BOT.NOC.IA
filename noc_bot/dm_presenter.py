@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import List, Literal, TypedDict
 
-from .config import SVCS
+from .config import DM_ASSISTANT_HUMOR_ENABLED, SVCS
 from .dm_intents import PeriodKey, ServiceKey
 from .dm_queries import QueryResult
 from .utils import fmt_dur, fmt_when_abs
@@ -319,6 +319,39 @@ def _render_fallback(result: QueryResult) -> str:
     return "Não consegui responder com segurança. Tente reformular a pergunta."
 
 
+
+def _should_add_light_humor(result: QueryResult) -> bool:
+    meta = result["meta"]
+    if not DM_ASSISTANT_HUMOR_ENABLED:
+        return False
+    if meta["stale"]:
+        return False
+    if meta["source"] != "DB":
+        return False
+    if meta["severity"] in {"SEV1", "SEV2", "SEV3"}:
+        return False
+    return result["intent"] in {"status_atual", "resumo_periodo"}
+
+
+def _maybe_add_light_humor(result: QueryResult, text: str) -> str:
+    if not _should_add_light_humor(result):
+        return text
+
+    data = result["data"]
+    if result["intent"] == "status_atual" and not result["service"]:
+        services = data.get("services", {})
+        states = [str((row or {}).get("state", "UNKNOWN")).upper() for row in services.values()]
+        if states and all(state == "UP" for state in states):
+            return _join_lines([text, "Hoje o caos parece estar de folga."], max_lines=4)
+
+    if result["intent"] == "status_atual" and result["service"] and str(data.get("state", "")).upper() == "UP":
+        return _join_lines([text, "Sem novela de link por aqui."], max_lines=4)
+
+    if result["intent"] == "resumo_periodo" and int(data.get("total_incidents", 0)) == 0:
+        return _join_lines([text, "O caos corporativo não bateu ponto nessa janela."], max_lines=4)
+
+    return text
+
 def render_factual(result: QueryResult) -> PresenterOutput:
     intent = result["intent"]
 
@@ -354,8 +387,10 @@ def render_factual(result: QueryResult) -> PresenterOutput:
     elif result["intent"] in {"status_atual", "resumo_periodo"}:
         tone = "light"
 
+    text = _maybe_add_light_humor(result, text)
+
     return {
-        "text": _join_lines([text]),
+        "text": _join_lines([text], max_lines=4),
         "safe_for_ai_polish": _safe_for_ai(result),
         "buttons": _base_buttons(result),
         "tone": tone,

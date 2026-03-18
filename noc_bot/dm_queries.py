@@ -231,6 +231,60 @@ def _base_meta(
     }
 
 
+
+
+def _service_label(service: Optional[ServiceKey]) -> str:
+    if not service:
+        return "serviço"
+    svc = SVCS.get(service)
+    return svc.label if svc else service
+
+
+def _suggested_cta(intent: IntentName, service: Optional[ServiceKey], meta: QueryMeta) -> str:
+    if service and meta.get("active_incident"):
+        return "Gerar evidência e texto pronto para acionamento."
+    if intent in {"queda_servico_janela", "contagem_falhas", "ultimo_cid"} and service:
+        return "Posso te mostrar evidência, CID e texto pronto para operadora."
+    if intent == "resumo_periodo":
+        return "Posso detalhar o serviço com mais ocorrência ou montar a evidência."
+    if intent == "status_atual" and service:
+        return "Posso te dizer também se houve falhas hoje ou montar a evidência."
+    return "Posso seguir com resumo, evidência ou texto pronto."
+
+
+def _assistant_brief(intent: IntentName, service: Optional[ServiceKey], period: PeriodKey, ok: bool, meta: QueryMeta) -> str:
+    label = _service_label(service)
+    window = _period_label(period)
+    if not ok:
+        return "Não consegui fechar a consulta com segurança."
+    if meta.get("active_incident") and service:
+        return f"{label} com incidente ativo {window}."
+    if intent == "status_atual" and service:
+        return f"Status atual de {label} disponível."
+    if intent == "resumo_periodo":
+        return f"Resumo {window} pronto para leitura executiva."
+    if intent == "comparativo_servico":
+        return f"Comparativo {window} pronto para priorização."
+    return f"Consulta de {label} pronta."
+
+
+def _enrich_data(
+    *,
+    intent: IntentName,
+    service: Optional[ServiceKey],
+    period: PeriodKey,
+    ok: bool,
+    meta: QueryMeta,
+    data: Dict[str, Any],
+) -> Dict[str, Any]:
+    out = dict(data or {})
+    out.setdefault("service_label", _service_label(service))
+    out.setdefault("period_label", _period_label(period))
+    out.setdefault("evidence_available", bool(service))
+    out.setdefault("suggested_cta", _suggested_cta(intent, service, meta))
+    out.setdefault("assistant_brief", _assistant_brief(intent, service, period, ok, meta))
+    return out
+
 def _result(
     *,
     intent: IntentName,
@@ -249,7 +303,14 @@ def _result(
         "period": period,
         "ok": ok,
         "meta": meta,
-        "data": data,
+        "data": _enrich_data(
+            intent=intent,
+            service=service,
+            period=period,
+            ok=ok,
+            meta=meta,
+            data=data,
+        ),
         "fallback_reason": fallback_reason,
     }
 

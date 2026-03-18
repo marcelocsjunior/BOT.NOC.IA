@@ -9,10 +9,12 @@ from typing import Any, Optional, cast
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from ..ai_client import polish_with_ai
+from ..ai_client import compose_general_dm_reply, polish_with_ai
 from ..config import (
     DM_ASSISTANT_ALLOWED_CHAT_IDS,
     DM_ASSISTANT_ENABLE_AI_FINISH,
+    DM_ASSISTANT_ENABLE_AI_GENERAL,
+    DM_ASSISTANT_ENABLE_DM_ROUTER,
     DM_ASSISTANT_ENABLED,
     DM_ASSISTANT_MAX_REPLY_LINES,
     DM_ASSISTANT_MIN_CONFIDENCE,
@@ -33,6 +35,8 @@ from ..dm_intents import (
     normalize_text,
 )
 from ..dm_presenter import render_factual
+from ..dm_router import resolve_dm_route
+from ..dm_session import save_last_resolution
 from ..dm_queries import dispatch_query
 from ..utils import is_mention_or_reply, strip_mention
 from .commands import (
@@ -258,6 +262,109 @@ def _looks_like_out_of_scope_dm_question(text: str, tn: str) -> bool:
     return True
 
 
+
+async def _reply_dm_general(
+    update: Update,
+    *,
+    user_text: str,
+    fallback_text: str,
+    mode: str,
+) -> bool:
+    msg = update.effective_message
+    if not msg:
+        return False
+
+    reply_text = (fallback_text or "").strip()
+    if DM_ASSISTANT_ENABLE_AI_GENERAL:
+        ai_reply = await compose_general_dm_reply(
+            user_text,
+            mode=cast(Any, mode),
+            fallback_text=reply_text,
+            max_lines=max(2, min(DM_ASSISTANT_MAX_REPLY_LINES + 1, 4)),
+            severity=None,
+        )
+        if ai_reply.get("ok") and ai_reply.get("text"):
+            reply_text = str(ai_reply.get("text") or reply_text)
+
+    if not reply_text:
+        return False
+
+    await msg.reply_text(reply_text, disable_web_page_preview=True)
+    return True
+
+
+async def _try_dm_router_reply(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    text: str,
+    t: str,
+    tn: str,
+) -> bool:
+    if not _is_dm(update):
+        return False
+    if not DM_ASSISTANT_ENABLED or not DM_ASSISTANT_ENABLE_DM_ROUTER:
+        return False
+    if _is_reserved_flow_text(t, tn):
+        return False
+
+    chat = update.effective_chat
+    if not chat or not _dm_assistant_allowed(chat.id):
+        return False
+
+    decision = await resolve_dm_route(chat.id, text)
+    if not decision.get("handled"):
+        return False
+
+    route = str(decision.get("route") or "")
+
+    if route == "consult" and decision.get("intent_data"):
+        intent_data = cast(IntentData, decision["intent_data"])
+        ok = await _reply_dm_consultive_from_intent(update, context, text=text, intent_data=intent_data)
+        if ok:
+            save_last_resolution(
+                chat.id,
+                intent=cast(Any, intent_data.get("intent")),
+                service=cast(Any, intent_data.get("service")),
+                period=cast(Any, intent_data.get("period")),
+                route="consult",
+            )
+        return ok
+
+    if route == "incident":
+        svc = detect_service_from_text(t)
+        if svc:
+            _save_dm_useful_context(
+                context,
+                route="attendance",
+                service=svc,
+                user_text=text,
+                intent="status_atual",
+                period="24h",
+            )
+            save_last_resolution(chat.id, service=cast(Any, svc), route="incident")
+        await cmd_attendance_2h(update, context, user_text=text)
+        return True
+
+    if route == "clarify":
+        msg = update.effective_message
+        clarify_text = str(decision.get("clarify_text") or "").strip()
+        if not msg or not clarify_text:
+            return False
+        await msg.reply_text(clarify_text, disable_web_page_preview=True)
+        return True
+
+    if route in {"social", "help"}:
+        return await _reply_dm_general(
+            update,
+            user_text=text,
+            fallback_text=str(decision.get("reply_text") or ""),
+            mode=route,
+        )
+
+    return False
+
+
 async def _reply_out_of_scope(update: Update) -> bool:
     msg = update.effective_message
     if not msg:
@@ -449,6 +556,9 @@ async def on_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if _is_dm(update) and is_strict_global_status_request(tn, normalized=True):
         await cmd_status(update, context)
+        return
+
+    if await _try_dm_router_reply(update, context, text=text, t=t, tn=tn):
         return
 
     if await _try_dm_consultive_reply(update, context, text=text, t=t, tn=tn):

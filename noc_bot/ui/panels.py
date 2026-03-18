@@ -157,6 +157,34 @@ def build_panel_un1(
 DM_TITLE_DEFAULT = "UN1 — Assistente de Operação (IA) (Tempo real)"
 
 
+
+def _assistant_footer(kind: str = "general") -> list[str]:
+    if kind == "home":
+        return [
+            "",
+            '💬 Fale do seu jeito: "telefone ok aí?", "teve problema hoje?", "qual é o site do speed test?"',
+        ]
+    if kind == "vpn":
+        return [
+            "",
+            '💬 Você pode perguntar: "VPN caiu?" ou "teve falha hoje?"',
+        ]
+    if kind == "quality":
+        return [
+            "",
+            "💬 Próximo passo: peça a evidência do serviço ou pergunte se houve falha hoje.",
+        ]
+    if kind == "availability":
+        return [
+            "",
+            '💬 Você pode seguir com: "telefone ok aí?" ou "me manda a evidência".', 
+        ]
+    return [
+        "",
+        '💬 Você pode perguntar naturalmente: "telefone ok aí?", "teve problema hoje?" ou "qual é o site do speed test?"', 
+    ]
+
+
 @dataclass(frozen=True)
 class Pct:
     pct: float | None
@@ -528,6 +556,7 @@ def build_dm_panel_un1_v2(latest: dict, events_recent: list, now_utc: datetime, 
         "",
         f"Impacto: {impact}.",
     ]
+    lines += _assistant_footer("general")
     return "\n".join(lines)
 
 def build_dm_followup_block(service: str, *, q_pct: float | None, q_term_str: str, now_ok: bool = True, incident_now: bool = False) -> str:
@@ -627,6 +656,7 @@ def build_dm_availability_today(latest: dict, events_recent: list, now_utc: date
         f"📞 Telefonia: {_fmt_pct(m['p_tel'].pct)} up",
         f"☁️ Escallo: {_fmt_pct(m['p_esc'].pct)} up",
     ]
+    lines += _assistant_footer("availability")
     return "\n".join(lines)
 
 
@@ -656,6 +686,7 @@ def build_dm_quality_today(latest: dict, events_recent: list, now_utc: datetime)
         "",
         "🧾 Prova: evidência <serviço> (ex.: evidência escallo)",
     ]
+    lines += _assistant_footer("quality")
     return "\n".join(lines)
 
 
@@ -794,6 +825,7 @@ def build_dm_home_multiunit(latest: dict, flaps_2h: dict[str, int]) -> str:
         "",
         "Digite o nome da unidade (ou apelido) ou clique no botão da unidade para detalhes.",
     ]
+    lines += _assistant_footer("home")
     return "\n".join(lines).rstrip()
 
 
@@ -826,4 +858,5 @@ def build_dm_unit_vpn(unit_label: str, vpn_state: str | None, flaps_2h: int) -> 
         "",
         impact,
     ]
+    lines += _assistant_footer("vpn")
     return "\n".join(lines).rstrip()

@@ -78,6 +78,14 @@ MAX_CIDS = 5
 EVIDENCE_TRIGGERS = ("evidencia", "evidência", "evidências", "prova", "provas")
 
 
+
+
+def _dm_natural_examples() -> str:
+    return (
+        'Exemplos DM: "telefone ok aí?" | "teve problema hoje?" | '
+        '"me manda a evidência da telefonia" | "qual é o site do speed test?"'
+    )
+
 # =====================================================================================
 # Low-level helpers (chat vs DM)
 # =====================================================================================
@@ -213,7 +221,8 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/timeline [N] — últimos N eventos\n"
         "/analyze [24h|7d|30d] — KPI + recomendação (determinístico)\n"
         "/atendimento — triagem 2h (DM)\n\n"
-        'DM: "tá tudo ok?" | "ocorreu queda hoje?" | "evidência telefonia"\n'
+        "DM híbrida: você pode falar naturalmente.\n"
+        f"{_dm_natural_examples()}\n"
     )
     await _send(update, context, txt, reply_markup=_kb(update))
 
@@ -510,7 +519,11 @@ async def cmd_supervisor_summary(update: Update, context: ContextTypes.DEFAULT_T
 
 async def cmd_evidence_request(update: Update, context: ContextTypes.DEFAULT_TYPE, svc_code: Optional[str]):
     if not svc_code:
-        msg = "📎 Evidências — selecione o serviço:" if _is_dm(update) else "Qual evidência você quer?"
+        msg = (
+            "📎 Evidências — selecione o serviço ou peça em linguagem natural (ex.: evidência telefonia)."
+            if _is_dm(update)
+            else "Qual evidência você quer?"
+        )
         if _is_dm(update):
             await _send_dm_hub(update, context, msg, reply_markup=kb_evidence_menu())
         else:
@@ -519,7 +532,7 @@ async def cmd_evidence_request(update: Update, context: ContextTypes.DEFAULT_TYP
 
     svc = SVCS.get(svc_code)
     if not svc:
-        msg = "Não identifiquei o serviço. Selecione:"
+        msg = "Não identifiquei o serviço. Selecione no menu ou diga algo como: evidência telefonia."
         if _is_dm(update):
             await _send_dm_hub(update, context, msg, reply_markup=kb_evidence_menu())
         else:

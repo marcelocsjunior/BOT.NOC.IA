@@ -70,8 +70,7 @@ TELEGRAM_TOKEN = must_env("TELEGRAM_BOT_TOKEN", "BOT_TOKEN")
 UNIT = env("NOC_UNIT", env("UNIT", "UN1")) or "UN1"
 
 NOC_DB_PATH = env("NOC_DB_PATH", "/var/lib/noc/noc.db")
-NOC_LOG_PATH = env("NOC_LOG_PATH", env("NOC_LOG_FILE", "/var/log/mikrotik/un1.log"))  # compat
-
+NOC_LOG_PATH = env("NOC_LOG_PATH", env("NOC_LOG_FILE", "/var/log/mikrotik/un1.log"))
 TAILER_STATE_PATH = env("NOC_TAILER_STATE_PATH", "/var/lib/noc/tailer.state.json")
 
 DB_FRESHNESS_S = env_int("NOC_DB_FRESHNESS_S", 600)
@@ -94,8 +93,18 @@ if DM_ASSISTANT_STYLE not in ("light", "professional", "friendly"):
 DM_ASSISTANT_PROACTIVE = env_bool("DM_ASSISTANT_PROACTIVE", False)
 DM_ASSISTANT_MAX_REPLY_LINES = env_int("DM_ASSISTANT_MAX_REPLY_LINES", 3)
 DM_ASSISTANT_ENABLE_AI_FINISH = env_bool("DM_ASSISTANT_ENABLE_AI_FINISH", False)
+DM_ASSISTANT_ENABLE_AI_CLASSIFIER = env_bool("DM_ASSISTANT_ENABLE_AI_CLASSIFIER", True)
+DM_ASSISTANT_CLASSIFIER_SHADOW_MODE = env_bool("DM_ASSISTANT_CLASSIFIER_SHADOW_MODE", False)
+DM_ASSISTANT_ENABLE_CLARIFY = env_bool("DM_ASSISTANT_ENABLE_CLARIFY", True)
+DM_ASSISTANT_ENABLE_SESSION_CONTEXT = env_bool("DM_ASSISTANT_ENABLE_SESSION_CONTEXT", True)
+DM_ASSISTANT_SESSION_TTL_S = env_int("DM_ASSISTANT_SESSION_TTL_S", 600)
+DM_ASSISTANT_MAX_CLARIFY_TURNS = env_int("DM_ASSISTANT_MAX_CLARIFY_TURNS", 2)
+DM_ASSISTANT_ENABLE_DM_ROUTER = env_bool("DM_ASSISTANT_ENABLE_DM_ROUTER", True)
+DM_ASSISTANT_ENABLE_SOCIAL = env_bool("DM_ASSISTANT_ENABLE_SOCIAL", True)
+DM_ASSISTANT_ENABLE_GENERAL_HELP = env_bool("DM_ASSISTANT_ENABLE_GENERAL_HELP", True)
+DM_ASSISTANT_ENABLE_AI_GENERAL = env_bool("DM_ASSISTANT_ENABLE_AI_GENERAL", True)
+DM_ASSISTANT_HUMOR_ENABLED = env_bool("DM_ASSISTANT_HUMOR_ENABLED", True)
 
-# Confidence mínima do parser consultivo
 _DM_ASSISTANT_MIN_CONFIDENCE_RAW = env("DM_ASSISTANT_MIN_CONFIDENCE", "0.60") or "0.60"
 try:
     DM_ASSISTANT_MIN_CONFIDENCE = float(_DM_ASSISTANT_MIN_CONFIDENCE_RAW.strip())
@@ -150,14 +159,12 @@ NOISE_TOKENS = [
 @dataclass(frozen=True)
 class Svc:
     code: str
-    # key base para match. Para qualidade, o match usa "key" + must="QUALITY".
     key: str
     label: str
     subject: str
     aliases: tuple[str, ...]
 
 
-# Catálogo de serviços (UN1)
 SVCS: dict[str, Svc] = {
     "NET": Svc(
         "NET",
@@ -194,20 +201,12 @@ SVCS: dict[str, Svc] = {
         "ESCALLO",
         ("escalo", "escallo", "omminichanel", "futurotec escallo", "futurotec"),
     ),
-
-    # VPN site-to-site (UN2/UN3)
-    # Observação: disponibilidade (UP/DOWN). Não usa QUALITY.
     "VPN2": Svc(
         "VPN2",
         "VPN_UN2",
         "VPN UN2 (Barreiro)",
         "VPN UN2 (Barreiro)",
-        (
-            "vpn un2",
-            "vpn barreiro",
-            "barreiro vpn",
-            "vpn unidade 2",
-        ),
+        ("vpn un2", "vpn barreiro", "barreiro vpn", "vpn unidade 2"),
     ),
     "VPN3": Svc(
         "VPN3",

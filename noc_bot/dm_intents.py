@@ -332,3 +332,91 @@ def detect_intent(text: str, min_confidence: float = _MIN_CONFIDENCE_DEFAULT) ->
         "fallback_reason": fallback_reason,
         "entities": entities,
     }
+
+
+_NOC_DOMAIN_TOKENS = (
+    "status", "queda", "falha", "falhas", "cid", "resumo", "instavel", "instabilidade",
+    "telefonia", "telefone", "voip", "ramal", "escallo", "escalo", "internet", "rede",
+    "link", "mundivox", "valenet", "vpn", "un1", "un2", "un3", "evidencia", "evidência",
+)
+
+_CONSULT_QUESTION_HINTS = ("qual", "quais", "como", "onde", "quando", "status", "ok", "agora", "hoje")
+
+_INCIDENT_STRONG_PATTERN = re.compile(
+    r"\b(caiu tudo|sem internet|sem sistema|parou agora|fora do ar agora|travando|travou|muito lento|muito lenta|indisponivel agora)\b"
+)
+
+_STATUS_PROBE_PATTERN = re.compile(
+    r"\b(status|agora|atual|ok ai|ok a[ií]|ta ok|tudo ok|tudo bem|como esta|como ta)\b"
+)
+
+
+def extract_period(text: str, *, normalized: bool = False) -> PeriodKey:
+    normalized_text = text if normalized else _normalize_text(text)
+    return _extract_period(normalized_text)
+
+
+def detect_intent_name(text: str, *, normalized: bool = False) -> IntentName:
+    normalized_text = text if normalized else _normalize_text(text)
+    return _detect_intent_name(normalized_text)
+
+
+def build_intent_data(
+    *,
+    text: str,
+    normalized_text: str,
+    intent: IntentName,
+    service: Optional[ServiceKey],
+    period: PeriodKey,
+    confidence: float,
+    fallback_reason: FallbackReason,
+    entities: Dict[str, Any],
+) -> IntentData:
+    return {
+        "version": "dm.intent.v3",
+        "unit": UNIT,
+        "raw_text": text or "",
+        "normalized_text": normalized_text,
+        "intent": intent,
+        "service": service,
+        "period": period,
+        "confidence": round(max(0.0, min(float(confidence), 0.99)), 2),
+        "fallback_reason": fallback_reason,
+        "entities": entities,
+    }
+
+
+def contains_noc_domain(text: str, *, normalized: bool = False) -> bool:
+    normalized_text = text if normalized else _normalize_text(text)
+    if not normalized_text:
+        return False
+    if extract_service(normalized_text, normalized=True) is not None:
+        return True
+    return any(token in normalized_text for token in _NOC_DOMAIN_TOKENS)
+
+
+def looks_like_status_probe(text: str, *, normalized: bool = False) -> bool:
+    normalized_text = text if normalized else _normalize_text(text)
+    return bool(_STATUS_PROBE_PATTERN.search(normalized_text))
+
+
+def looks_like_consult_question(text: str, *, normalized: bool = False) -> bool:
+    normalized_text = text if normalized else _normalize_text(text)
+    if not normalized_text:
+        return False
+    if looks_like_status_probe(normalized_text, normalized=True):
+        return True
+    if any(tok in normalized_text for tok in _CONSULT_QUESTION_HINTS):
+        return True
+    return normalized_text.endswith("?")
+
+
+def looks_like_incident_report(text: str, *, normalized: bool = False) -> bool:
+    normalized_text = text if normalized else _normalize_text(text)
+    if not normalized_text:
+        return False
+    if bool(_INCIDENT_STRONG_PATTERN.search(normalized_text)):
+        return True
+    if looks_like_complaint(normalized_text, normalized=True) and not looks_like_consult_question(normalized_text, normalized=True):
+        return True
+    return False
