@@ -6,8 +6,7 @@ SINCE="${1:-10 min ago}"
 LINES="${2:-160}"
 
 ssh_vm "set -euo pipefail
-SUDO="sudo -n"
-if ! ${SUDO} -v >/dev/null 2>&1; then echo "SUDOERS DRIFT: faltam regras NOPASSWD em /etc/sudoers.d/noc-ops" >&2; exit 77; fi
+if ! sudo -n /usr/bin/systemctl --version >/dev/null 2>&1; then echo 'SUDOERS DRIFT: falta NOPASSWD para /usr/bin/systemctl em /etc/sudoers.d/noc-ops' >&2; exit 77; fi
 sudo -n systemctl stop ${REMOTE_SERVICE} || true
 
 # gate de sintaxe antes de subir
