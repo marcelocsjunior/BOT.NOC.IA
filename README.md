@@ -1,216 +1,199 @@
-# BOT ia NOC (UN1) — Coletor + Telegram Bot (AS-RUNNING)
+# BOT ia NOC (UN1) — Coletor + Telegram Bot
 
-Bot operacional de NOC para a unidade **UN1**: ingestão de eventos do **MikroTik RouterOS 7** (dual WAN), persistência e consulta via **Telegram**, com **governança de versão**, **evidências** e **anti-drift**.
+Bot operacional de NOC para a unidade **UN1**, com ingestão confiável dos eventos do **MikroTik RouterOS 7**, persistência estruturada e consulta via **Telegram**, preservando um princípio simples:
 
-> Princípio de arquitetura: **Telegram é front-end (push/consulta), não é barramento**. O barramento confiável é o **Collector** (syslog/DB).
+- **a IA interpreta a intenção e organiza a conversa**
+- **DB, LOG e regras provam os fatos**
+- **a IA não inventa status, causa raiz, severidade nem evidência**
 
----
+Essa separação é o que impede o bot de virar um poeta perigoso de incidente.
 
 ## Arquitetura (produção)
 
-Pipeline end-to-end (produção):
+Pipeline end-to-end em produção:
 
-**RouterOS 7 (UN1)** → **Syslog remoto** → **rsyslog (raw)** → **SQLite (WAL)** → **Bot Telegram (AUTO: DB-first + fallback LOG)**
+**RouterOS 7 (UN1)** → **syslog remoto** → **rsyslog (raw)** → **SQLite (WAL)** → **Bot Telegram (AUTO: DB-first + fallback LOG)**
 
-Pontos canônicos (produção):
+Pontos canônicos:
 - Syslog: `192.168.10.20:514/UDP`
 - Filtro de origem (RouterOS): `192.168.20.1`
 - Raw log: `/var/log/mikrotik/un1.log`
-- DB: `/var/lib/noc/noc.db` (**SQLite WAL**)
+- DB: `/var/lib/noc/noc.db`
 - State/offset: `/var/lib/noc/tailer.state.json`
 - Campo canônico no schema: `check_name`
 
-Canal complementar (não dependência do pipeline):
-- RouterOS API-SSL: **porta 9005/TLS** (útil para consultas/diagnóstico/hardening futuro)
+Canal complementar:
+- RouterOS API-SSL: `9005/TLS`
 
----
+## Contrato de evento
 
-## Contrato de evento (parseável/auditável)
-
-Formato canônico (linha única):
+Formato canônico:
 `NOC|unit=UN1|device=<id>|check=<nome>|state=UP/DOWN|host=<target>|cid=<correlation-id>`
 
 Objetivos:
-- Timeline determinística (consulta/forense)
-- Correlação por `cid`
-- Evidência “prova” sem improviso
+- timeline determinística
+- correlação por `cid`
+- evidência operacional auditável
+- leitura executiva sem improviso
 
----
-
-## Catálogo de checks (UN1) — produção
+## Catálogo de checks (UN1)
 
 - **MUNDIVOX (WAN1)**: target `189.91.71.217` | src-address `189.91.71.218`
 - **VALENET (WAN2)**: target `187.1.49.121` | src-address `187.1.49.122`
 - **ESCALLO**: `187.33.28.57`
 - **Telefonia (VOIP)**: `138.99.240.49`
 
----
-
 ## Severidade (matriz de decisão)
 
-- **SEV1**: `MUNDIVOX` **DOWN** (com/sem `VALENET`)
-- **SEV3**: `VALENET` **DOWN** com `MUNDIVOX` **UP**
-- **SEV2**: serviços (`ESCALLO` / `VOIP`) **DOWN** com WANs **UP**
+- **SEV1**: MUNDIVOX DOWN (com ou sem VALENET)
+- **SEV3**: VALENET DOWN com MUNDIVOX UP
+- **SEV2**: serviços (ESCALLO/VOIP) DOWN com WANs UP
 
----
+## Camada DM assistiva / híbrida
 
-## Serviços (produção)
+A DM atual já opera em superfície híbrida, com seis rotas formais:
 
-Esperado em execução:
-- `rsyslog.service`
-- `noc-sqlite-tailer.service`
-- `telegram-bot.service`
+- `social`
+- `help`
+- `consult`
+- `incident`
+- `clarify`
+- `none`
 
-Modo do bot: **AUTO**
-- Primário: **DB-first**
-- Fallback: **LOG** quando DB/tailer estiver stale/indisponível
+Resumo do papel de cada uma:
+- **social**: saudações e interação leve
+- **help**: ajuda simples e segura, sem afirmar fatos operacionais
+- **consult**: consulta factual em cima de DB/LOG/regras
+- **incident**: triagem operacional e atendimento 2h
+- **clarify**: pergunta curta para fechar contexto/escopo
+- **none**: nada aplicável; fluxo padrão assume fallback seguro
 
----
+Módulos centrais:
+- `noc_bot/handlers/chat.py` — entrada de texto livre
+- `noc_bot/dm_router.py` — decisão de rota na DM
+- `noc_bot/dm_session.py` — contexto curto e clarificação
+- `noc_bot/dm_intents.py` — parser determinístico factual
+- `noc_bot/dm_queries.py` — consultas em fonte real
+- `noc_bot/dm_presenter.py` — resposta factual base
+- `noc_bot/ai_client.py` — IA opcional para classificar ou polir texto
 
-## UX do Bot (produto vs técnico)
+Documento detalhado da camada DM:
+- [`docs/DM_ASSISTIVA_HIBRIDA.md`](docs/DM_ASSISTIVA_HIBRIDA.md)
 
-### DM (supervisora/coordenadora) — “produto”
-- Resposta **curta (C2)** + painel resumido com status dos serviços (Link1/Link2/Telefonia/Escallo)
-- Botões curtos para navegação: **Torre de Controle / Resumo 24h / Semana / Evidências / Fonte**
-- Objetivo: reduzir ruído e acelerar decisão (impacto, redundância, próximo passo)
+## UX do bot
 
-### Grupo NOC — “técnico”
-- Anti-ruído: responde apenas por **@menção** ou **reply**
-- Botões técnicos: **Status / Analyze 24h/7d / Timeline 50 / Evidências / Fonte**
-- Objetivo: operação e troubleshooting com rastreabilidade
+### DM (produto)
+- resposta curta e objetiva
+- painel executivo da unidade
+- botões para resumo, evidências, atendimento e fonte
+- contexto curto para follow-up
+- clarificação mínima quando necessário
 
----
+### Grupo NOC (técnico)
+- anti-ruído por @menção ou reply
+- timeline, analyze, evidências e where
+- mesma fonte factual da DM
 
-## Evidências (“prova” + texto pronto)
+## Evidências
 
-Trigger aceito (frase natural):
-- `evidência`, `evidencias`, `evidências`, `prova`, `provas`
+Triggers aceitos:
+- `evidência`
+- `evidencias`
+- `evidências`
+- `prova`
+- `provas`
 
-Regra de segurança:
-- exigir o **serviço** (ex.: “evidência telefonia”) para evitar prova errada
+Regra:
+- exigir o serviço para evitar prova errada
 
-Entrega (3 mensagens):
-1) painel/seleção
-2) evidência compacta + botões
-3) **texto pronto** para operadora com **5 CIDs mais recentes** + nota “há mais”
+Entrega padrão:
+1. painel/contexto
+2. evidência compacta
+3. texto pronto para operadora com até 5 CIDs recentes
 
----
+## Toolkit operacional (`tools/ops`)
 
-## Versionamento e /where (diagnóstico)
+A operação remota do bot ficou padronizada em `tools/ops`:
 
-Contrato do `/where` (diagnóstico):
-- `BOT_VERSION=...|build=...`
-- `SOURCE=DB/LOG` + freshness
-- paths relevantes (DB/LOG)
+```bash
+tools/ops/botctl.sh status
+tools/ops/botctl.sh inspect
+tools/ops/botctl.sh restart "10 min ago" 80
+tools/ops/botctl.sh log "20 min ago" 160
+tools/ops/botctl.sh reconcile
+```
 
-Padrão no `.env`:
-- `BOT_VERSION=YYYY-MM-DD-dm-group-ux|build=YYYY-MM-DD_HHMMSS`
-- `BUILD_ID=YYYY-MM-DD_HHMMSS`
+Alvo operacional atual:
+- VM bot: `192.168.1.4`
+- usuário: `bio`
+- base remota: `/opt/telegram-bot`
+- serviço remoto: `telegram-bot.service`
 
-Exemplo (Release 0 / AS-RUNNING):
-- Tag sugerida: `un1-2026-02-28-build-2026-02-28_094935`
-
----
-
-## Estrutura do repositório
-
-- `bot.py` — entrypoint/shim do bot
-- `noc_bot/` — core do bot (handlers, UI, parsers, evidências, sources)
-- `infra/etc/` — snapshot **AS-RUNNING** de produção:
-  - `rsyslog.d/*`
-  - `logrotate.d/*`
-  - `systemd/system/*` (unit + drop-ins)
-- `release/` — hashes/artefatos do snapshot (prova do AS-RUNNING)
- - `docs/` — documentação operacional (índice: [docs/README.md](docs/README.md); sync: [docs/SYNC_RUNBOOKS.md](docs/SYNC_RUNBOOKS.md))
-- `.env.example` — modelo de variáveis (sem segredos)
-- `.gitignore` — bloqueia runtime (DB/logs/state/venv)
-
-> Nota: `infra/etc/` é **foto do que está em produção** (governança/forense). Mudança de infra deve ser tratada como Change Control (commit + release/tag) para evitar drift silencioso.
-
----
+Principais componentes:
+- `tools/ops/_cfg.sh`
+- `tools/ops/reconcile-runtime.sh`
+- `tools/ops/botctl.sh`
+- `tools/ops/README_ops_fluxo.md`
 
 ## Configuração
 
-Use `.env.example` como base e crie o `.env` **somente no runtime** (não versionar).
+Use `.env.example` como baseline. O runtime real deve manter apenas segredos válidos no `.env`.
 
-Regras:
-- Nunca commitar `.env` nem tokens.
-- Manter apenas `TELEGRAM_BOT_TOKEN` no `.env` (reduz risco de regressão por variáveis duplicadas).
-- `BOT_VERSION` e `BUILD_ID` devem refletir o build em execução.
+Pontos relevantes:
+- `TELEGRAM_BOT_TOKEN`
+- `BOT_VERSION`
+- `BUILD_ID`
+- `NOC_DB_PATH`
+- `NOC_LOG_PATH`
+- família `DM_ASSISTANT_*`
+- `AI_ENABLED` e credenciais Cloudflare, quando aplicável
 
----
+## Deploy seguro
 
-## Runbook rápido — Deploy seguro (sem quebra em produção)
+Deploy padrão:
+- atualiza **somente** `noc_bot/`
+- `bot.py` só muda quando houver alteração real de entrypoint/shim
+- `.env`, `venv`, DB/state e logs não devem ser tocados no ciclo padrão
 
-### Objetivo
-Atualizar o **core do bot** com risco controlado, preservando runtime e dados.
+Documento de deploy:
+- [`docs/DEPLOY.md`](docs/DEPLOY.md)
 
-### Escopo do deploy (o que muda)
-- **Muda:** `noc_bot/` (e, quando necessário, `bot.py`)
-- **Não muda:** `.env`, `venv/`, `/var/lib/noc/*` (DB/state), `/var/log/mikrotik/*` (logs), unidades systemd/rsyslog/logrotate (a menos que a mudança seja explicitamente infra)
+## Testes e smoke test
 
-### Gate (pré-deploy)
-- Evitar deploy durante incidente ativo (SEV em andamento)
-- Snapshot/release do estado “antes” disponível (rollback real)
-- Confirmação de que não há segredos versionados
+A documentação e o runtime atual já pressupõem validação da DM híbrida por:
+- smoke tests manuais na DM
+- callbacks
+- atendimento/evidência
+- checks de logs pós-restart
+- testes formais, quando o bundle implantado os incluir
 
-### Sanity checks pós-deploy (DoD)
-- `telegram-bot.service` ativo e sem restart loop (StartLimit ok)
-- Bot responde `/where` com `BOT_VERSION|build` esperado
-- `/where` indica `SOURCE=DB` quando DB está saudável (LOG só em fallback)
-- Timeline/Status coerentes (DB/LOG conforme fonte)
+Casos mínimos recomendados:
+- `Oi, boa tarde`
+- `Qual é o site do speed test?`
+- `Como faço para medir a velocidade da internet?`
+- `Telefone ok aí?`
+- `E a internet?`
+- `falhas hoje`
+- `Caiu tudo agora`
+- `evidência telefonia`
 
-### Rollback (contenção)
-- Voltar para tag/release anterior
-- Restart do `telegram-bot.service`
-- Validar `/where` + sanity checks
-- Registrar ChangeLog (causa/impacto/decisão)
+## Estrutura documental recomendada
 
----
+- `baseline/00_INDEX_CANONICO.md` — ponteiro único
+- `baseline/BOT_ia_NOC_UN1_CANONICO.md` — fonte única consolidada
+- `docs/DM_ASSISTIVA_HIBRIDA.md` — comportamento da DM atual
+- `docs/DEPLOY.md` — deploy seguro + smoke test
+- `docs/README.md` — índice rápido
+- `tools/ops/README_ops_fluxo.md` — fluxo notebook → VM bot
 
-## Operação e troubleshooting (atalhos)
+## Roadmap
 
-### Health do runtime (serviços)
-- `rsyslog.service` deve estar **active (running)** e recebendo UDP/514
-- `noc-sqlite-tailer.service` deve estar **active (running)** e alimentando SQLite
-- `telegram-bot.service` deve estar **active (running)** e respondendo comandos
+1. anti-flap na fonte (RouterOS / Netwatch)
+2. hardening da API-SSL 9005
+3. qualidade por operadora (L1/L2)
+4. expansão multi-unidade (UN2/UN3)
+5. refinamento fino de contexto, clarificação e respostas binárias na DM
 
-### DB (sanidade)
-- DB em WAL (esperado): `journal_mode = wal`
-- Schema deve conter `check_name` (campo canônico)
+## Frase de visão
 
-> Observação operacional: usar “staleness por idade do último evento” pode dar falso positivo em períodos estáveis. Recomendação: implementar heartbeat/SELFTEST periódico (1–5 min) e excluir SELFTEST de KPIs.
-
----
-
-## Segurança e hardening (baseline)
-
-- Redaction global do token nos logs (evita vazamento)
-- Token rotacionado
-- “Leak check” esperado: **0**
-- Hardening recomendado (API-SSL 9005):
-  - allowlist no firewall input e/ou `/ip service address=`
-  - limitar origem a VPN/S2S/LAN mgmt (não expor na internet)
-
----
-
-## Governança (anti-drift)
-
-- Este repo representa **fonte auditável** (código + snapshot AS-RUNNING + evidências/hashes).
-- Mudança em produção deve virar **commit + tag/release**.
-- Conflitos de documentação: **AS-RUNNING/AS-BUILT vence**; documentação complementa, não substitui.
-
----
-
-## Releases
-
-**Release 0 (AS-RUNNING)**:
-- Tag sugerida: `un1-2026-02-28-build-2026-02-28_094935`
-- Assets: `.tar.gz` + `.sha256` (snapshot do que estava rodando, com prova de integridade)
-
----
-
-## Roadmap (próximos passos NOC)
-1) Anti-flap na fonte (RouterOS / Netwatch): debounce + cooldown  
-2) Hardening API-SSL 9005: allowlist no firewall e/ou `/ip service address=`  
-3) Multi-unidade (UN2/UN3): replicar contrato e core modular mantendo DM “produto” por unidade
+**A IA da DM do BOT ia NOC deve ser humana na conversa, inteligente na interpretação e rigorosa na verdade operacional.**
