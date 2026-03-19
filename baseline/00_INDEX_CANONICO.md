@@ -78,7 +78,7 @@ Documento detalhado:
 ## 4) Deploy/Release (contrato)
 
 Regra crítica:
-- Deploy padrão atualiza **somente** `noc_bot/` para preservar `bot.py/.env/venv`.
+- Deploy padrão atualiza `noc_bot/`; `bot.py` só entra quando houver mudança real de entrypoint/shim, preservando `.env/venv`.
 
 Ferramentas e contratos:
 - deploy seguro conforme `docs/DEPLOY.md`
