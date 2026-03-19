@@ -2,36 +2,37 @@
 
 **Unidade:** UN1  
 **Timezone:** America/Sao_Paulo (BRT)  
-**ATUALIZADO_EM:** 2026-03-15 (BRT)  
-**DATA_BASELINE (baseline vigente):** 2026-03-15  
-**BOT_VERSION|build (último observado / /where em 2026-03-15):** `v2026.03.15-dm-fix6|build=2026-03-15_182955`  
-**Política:** este arquivo é a **única fonte da verdade** do projeto (sem anexos). Saídas “effective config” devem ser **coladas** nas seções de *snapshots* abaixo.  
-**Baseline de referência (histórico, não-anexado):** `AS_BUILT_ATUAL=UN1_AS_BUILT_SNAPSHOT_2026-02-25_v11.md` | `DOC_MASTER_ATUAL=BOT_ia_NOC_UN1_Documento_Master_2026-02-25_v7.md`  
-**Objetivo:** NOC operacional auditável para dual-WAN (MikroTik RouterOS 7) com ingestão confiável, histórico consultável, UX “produto” no Telegram (DM) e UX técnica no grupo.
+**ATUALIZADO_EM:** 2026-03-18 (BRT)  
+**DATA_BASELINE (baseline vigente):** 2026-03-18  
+**BOT_VERSION|build (último observado comprovado):** `v2026.03.15-dm-fix6|build=2026-03-15_182955`  
+**Política:** este arquivo é a **única fonte da verdade** do projeto. Saídas “effective config” devem ser coladas nas seções de snapshots quando disponíveis.  
+**Baseline histórico de referência:** `AS_BUILT_ATUAL=UN1_AS_BUILT_SNAPSHOT_2026-02-25_v11.md` | `DOC_MASTER_ATUAL=BOT_ia_NOC_UN1_Documento_Master_2026-02-25_v7.md`  
+**Objetivo:** NOC operacional auditável para dual-WAN com ingestão confiável, histórico consultável, UX executiva na DM e camada conversacional híbrida sem romper a verdade operacional.
 
 ---
 
-## 1) Decisões e princípios (histórico do projeto)
+## 1) Decisões e princípios
 
 1. **Telegram não é barramento confiável bot→bot / estado.**  
-   Telegram é **front-end** (push/consulta). O barramento é o **collector**.
+   Telegram é **front-end**. O barramento é o **collector**.
 
-2. **Contrato de evento padronizado (parseável/auditável)** é obrigatório para histórico, SLA e evidência:  
+2. **Contrato de evento parseável e auditável** é obrigatório:  
    `NOC|unit=UN1|device=<id>|check=<nome>|state=UP/DOWN|host=<target>|cid=<correlation-id>`
 
 3. **Pipeline determinístico > IA.**  
-   IA é opcional para texto/recomendações. Números e estado vêm do log/DB.
+   IA conversa, interpreta e pode polir texto; números, estados, janelas, CID, severidade e evidência continuam vindo de DB/LOG/regras.
 
-4. **Governança anti-drift:**  
-   - Uma fonte de verdade e ChangeLog curto.  
-   - Conflito entre docs: **AS_BUILT vence** (quando existir).  
-   - Se algo não estiver documentado: marcar como **N/D**.
+4. **Governança anti-drift.**  
+   Documento canônico, toolkit ops, cofre de releases e evidências de reconciliação existem para impedir “runtime mágico”.
+
+5. **Se faltar dado, marcar N/D.**  
+   Não inventar. Nem no bot, nem na documentação.
 
 ---
 
-## 2) Arquitetura em produção (AS-IS atual)
+## 2) Arquitetura em produção (AS-IS)
 
-### 2.1 Pipeline end-to-end (produção)
+### 2.1 Pipeline end-to-end
 **RouterOS 7 (UN1)** → **syslog remoto** → **rsyslog raw** → **SQLite** → **Bot Telegram** (AUTO: DB-first + fallback LOG)
 
 ### 2.2 Ingestão (syslog remoto)
@@ -42,232 +43,127 @@
 ### 2.3 Persistência estruturada
 - **DB SQLite (WAL):** `/var/lib/noc/noc.db`
 - **State/offset tailer:** `/var/lib/noc/tailer.state.json`
-- **Campo canônico do check no schema:** `check_name`
+- **Campo canônico do check:** `check_name`
 
 ### 2.4 Serviços (produção)
-- `rsyslog.service` → active (running)  
-- `noc-sqlite-tailer.service` → active (running)  
-- `telegram-bot.service` → active (running)  
+- `rsyslog.service` → active (running)
+- `noc-sqlite-tailer.service` → active (running)
+- `telegram-bot.service` → active (running)
 
 ### 2.5 Bot (modo padrão)
-- **Modo AUTO**: DB-first (consulta a DB).  
-- Se DB/tailer stale/indisponível: **fallback LOG**.
+- **AUTO**: DB-first
+- **Fallback**: LOG quando DB/tailer estiver stale/indisponível
 
-
-### 2.6 Fingerprint (10 linhas) — carimbo técnico (baseline vs effective)
-- Regra: se não estiver colado do ambiente, marcar **N/D** (não inventar).
-1. `telegram-bot.service ExecStart` → baseline: `/home/telegram-bot/venv/bin/python /opt/telegram-bot/bot.py` | effective: `/home/telegram-bot/venv/bin/python /opt/telegram-bot/bot.py`
-2. `noc-sqlite-tailer.service ExecStart` → baseline: **N/D** | effective: **N/D**
-3. `rsyslog imudp bind` → `192.168.10.20:514/UDP` (conf: `/etc/rsyslog.d/10-mikrotik.conf`) | effective: **N/D**
-4. `rsyslog filter→file` → `$fromhost-ip == 192.168.20.1` → `/var/log/mikrotik/un1.log` (conf: `/etc/rsyslog.d/20-mikrotik-files.conf`) | effective: **N/D**
-5. `logrotate` → `/etc/logrotate.d/mikrotik-un1` (`daily rotate 30 compress delaycompress create 0640 syslog adm postrotate HUP`) | effective: **N/D**
-6. `SQLite DB` → `/var/lib/noc/noc.db` (WAL) | effective: **N/D**
-7. `tailer state/offset` → `/var/lib/noc/tailer.state.json` | effective: **N/D**
-8. `schema campo do check` → `check_name` | effective: **N/D**
-9. `/where` → `BOT_VERSION|build` + `SOURCE=DB/LOG` + freshness + paths | effective (/where 2026-03-15): `BOT_VERSION=v2026.03.15-dm-fix6|build=2026-03-15_182955`
-10. `release/deploy` → tooling: `/usr/local/sbin/noc-release` + cofre `/var/lib/noc/releases` (`SHA256SUMS` OK, `LAST_RELEASE.zip` OK) + backup `/opt/telegram-bot.bak_2026-02-28_114719`
-
+### 2.6 Fingerprint (resumo)
+1. `telegram-bot.service ExecStart` → `/home/telegram-bot/venv/bin/python /opt/telegram-bot/bot.py`
+2. `noc-sqlite-tailer.service ExecStart` → `/usr/local/bin/noc-sqlite-tailer.py`
+3. `rsyslog imudp bind` → `192.168.10.20:514/UDP`
+4. `rsyslog filter → file` → `$fromhost-ip == 192.168.20.1` → `/var/log/mikrotik/un1.log`
+5. `logrotate` → `/etc/logrotate.d/mikrotik-un1`
+6. `SQLite DB` → `/var/lib/noc/noc.db` (WAL)
+7. `tailer state` → `/var/lib/noc/tailer.state.json`
+8. `schema campo do check` → `check_name`
+9. `/where` → `BOT_VERSION|build` + `SOURCE=DB/LOG` + freshness + paths
+10. `release/deploy` → `noc-release` + cofre `/var/lib/noc/releases`
 
 ---
 
-## 3) Evidências e governança
+## 3) Governaça, segurança e hardening
 
-### 3.1 logrotate do un1.log
-- `/etc/logrotate.d/mikrotik-un1`
-- Política: `daily`, `rotate 30`, `compress`, `delaycompress`, `create 0640 syslog adm`
-- `postrotate`: `systemctl kill -s HUP rsyslog.service`
+### 3.1 SecOps aplicado
+- redaction global do token nos logs
+- token rotacionado
+- leak check esperado: `0`
+- `.env` de runtime com segredos válidos e sem duplicação desnecessária
 
-### 3.2 SecOps / hardening aplicado
-- Redaction global do token nos logs
-- Token rotacionado
-- “Leak check” esperado: 0
-- `.env`: manter apenas `TELEGRAM_BOT_TOKEN` (evitar duplicação/regressão)
+### 3.2 Hardening pendente recomendado
+- API-SSL na porta `9005/TLS`
+- allowlist em firewall input e/ou `/ip service address=`
+- limitar origem a VPN / S2S / LAN de gestão
 
-### 3.3 Hardening pendente recomendado (RouterOS API-SSL 9005)
-- API-SSL na porta **9005** (TLS) acessível via VPN
-- Recomendação: allowlist em firewall e/ou `/ip service address=`
-
----
-
-### 3.4 Snapshots “effective config” (cole aqui; redija segredos)
-Objetivo: este canônico ser autocontido para auditoria/drift. Cole as saídas **reais** do ambiente (com token redigido).
-
-**3.4.1 systemd (bot):**
-- `systemctl cat telegram-bot` →
-
-```ini
-# /etc/systemd/system/telegram-bot.service
-[Unit]
-Description=Telegram AI Bot Worker (Hardened)
-After=network-online.target
-Wants=network-online.target
-StartLimitIntervalSec=60
-StartLimitBurst=8
-
-[Service]
-User=telegram-bot
-Group=telegram-bot
-WorkingDirectory=/opt/telegram-bot
-EnvironmentFile=/opt/telegram-bot/.env
-Environment=PYTHONUNBUFFERED=1
-Environment=APP_DIR=/opt/telegram-bot
-
-ExecStart=/usr/bin/python3 /opt/telegram-bot/bot.py
-
-Restart=on-failure
-RestartSec=5
-TimeoutStopSec=20
-KillSignal=SIGTERM
-
-LimitNOFILE=65536
-TasksMax=200
-MemoryMax=512M
-UMask=007
-
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ProtectKernelTunables=true
-ProtectKernelModules=true
-ProtectControlGroups=true
-MemoryDenyWriteExecute=true
-LockPersonality=true
-RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
-ReadWritePaths=/opt/telegram-bot
-
-[Install]
-WantedBy=multi-user.target
-
-# /etc/systemd/system/telegram-bot.service.d/10-execstart.conf
-[Service]
-ExecStart=
-ExecStart=/home/telegram-bot/venv/bin/python /opt/telegram-bot/bot.py
-
-# /etc/systemd/system/telegram-bot.service.d/20-protecthome.conf
-[Service]
-ProtectHome=false
-
-# /etc/systemd/system/telegram-bot.service.d/30-envfile.conf
-[Service]
-EnvironmentFile=/opt/telegram-bot/.env
-
-# /etc/systemd/system/telegram-bot.service.d/40-startlimit.conf
-[Unit]
-StartLimitIntervalSec=0
-
-[Service]
-Restart=always
-RestartSec=3
-
-```
-
-- `systemctl show telegram-bot -p User,WorkingDirectory,ExecStart,EnvironmentFiles` → **N/D**
-
-**3.4.2 systemd (tailer):**
-- `systemctl cat noc-sqlite-tailer` → **N/D**
-- `systemctl show noc-sqlite-tailer -p ExecStart,WorkingDirectory` → **N/D**
-
-**3.4.3 rsyslog:**
-- `/etc/rsyslog.d/10-mikrotik.conf` (imudp + bind) → **N/D**
-- `/etc/rsyslog.d/20-mikrotik-files.conf` (filtro+arquivo) → **N/D**
-- `ss -lunp | grep :514` → **N/D**
-
-**3.4.4 DB/schema:**
-- `sqlite3 /var/lib/noc/noc.db '.schema'` (provar `check_name`) → **N/D**
-- `ls -lah /var/lib/noc/noc.db*` (provar WAL) → **N/D**
-
-**3.4.5 /where (1 exemplo real):**
-- saída do `/where` (com token redigido) → Exemplo real (2026-03-15, token redigido):
-```
-BOT_VERSION=v2026.03.15-dm-fix6|build=2026-03-15_182955
-build=2026-03-15_182955
-BUILD_ID=2026-03-15_182955
-HOST=ubt
-UNIT=UN1
-SOURCE=DB (ok)
-DB=/var/lib/noc/noc.db
-LOG=/var/log/mikrotik/un1.log
-last_db_ts=2026-03-15 21:15:18-0300
-last_log_ts=2026-03-15 21:15:18-0300
-freshness_s=3910
-```
-
-
-**3.4.6 Release/artefatos (produção):**
-- ZIP release (limpo): `/tmp/noc_bot_release_2026-02-27_022037.zip`
-- ZIP padrão (deploy): `/tmp/noc_bot_patched.zip`
-- SHA256 (ambos): `687c747f6f9115a7faf164aea04fe9b1dc88fd5a08085267fec9da3c78151576`
-- Prova hotfix no ZIP: `noc_bot/sources.py` contém `raw_col = _detect_raw_col()` em `get_last_n_events` (linha ~201 no snippet validado via `unzip -p`).
-- Prova runtime: contador `journalctl -u telegram-bot --since "5 min ago" | grep -c "NameError: name 'raw_col'"` = `0`.
-
+### 3.3 Regra documental
+- **CANONICO_FULL vence**
+- `docs/` complementa
+- `README.md` resume
+- `tools/ops/` operacionaliza
+- conflito entre runtime e clone local deve virar evidência, não folclore
 
 ---
 
-## 4) Catálogo de checks (UN1) e severidade (produção)
+## 4) Toolkit operacional (notebook → VM bot)
 
-### 4.1 Checks
+A suíte `tools/ops` foi consolidada para operar a VM bot a partir do notebook.
+
+### 4.1 Alvo operacional atual
+- `VM_BOT_HOST=192.168.1.4`
+- `VM_BOT_USER=bio`
+- `REMOTE_BASE=/opt/telegram-bot`
+- `REMOTE_SERVICE=telegram-bot.service`
+
+### 4.2 Scripts relevantes
+- `tools/ops/_cfg.sh`
+- `tools/ops/reconcile-runtime.sh`
+- `tools/ops/botrestart.sh`
+- `tools/ops/botctl.sh`
+- `tools/ops/README_ops_fluxo.md`
+
+### 4.3 Funções
+- `reconcile-runtime.sh` → compara runtime da VM com o clone local e reconcilia `noc_bot/`
+- `botrestart.sh` → restart remoto com gate de `py_compile`
+- `botctl.sh` → wrapper de status, inspect, restart, log, reconcile, deploy, ship-tag e drift
+- `_cfg.sh` → configuração central do alvo
+
+### 4.4 Fluxo operacional recomendado
+```bash
+tools/ops/botctl.sh status
+tools/ops/botctl.sh inspect
+tools/ops/botctl.sh restart "10 min ago" 80
+tools/ops/botctl.sh log "20 min ago" 160
+tools/ops/botctl.sh reconcile
+```
+
+### 4.5 Governança anti-drift
+- detecção explícita de drift entre runtime da VM e clone local
+- reconciliação controlada de `noc_bot/`
+- evidência local em `_reconcile/<timestamp>/`
+- commit local sem push automático na reconciliação
+
+---
+
+## 5) Catálogo de checks (UN1) e severidade
+
+### 5.1 Checks
 - **MUNDIVOX (WAN1)**: target `189.91.71.217` | src-address `189.91.71.218`
 - **VALENET (WAN2)**: target `187.1.49.121` | src-address `187.1.49.122`
 - **ESCALLO**: `187.33.28.57`
 - **Telefonia (VOIP)**: `138.99.240.49`
 
-### 4.2 Severidade
+### 5.2 Severidade
 - **SEV1:** MUNDIVOX DOWN (com/sem VALENET)
 - **SEV3:** VALENET DOWN com MUNDIVOX UP
 - **SEV2:** serviços (ESCALLO/VOIP) DOWN com WANs UP
 
 ---
 
-## 5) UX “produto” (DM) — contrato atual (inclui últimas mudanças)
+## 6) UX “produto” (DM)
 
-### 5.1 Objetivo do DM
-Resposta curta, visual e consistente para supervisora/cliente (sem ruído), com botões e evidência sob demanda.
+### 6.1 Objetivo da DM
+Entregar uma assistente operacional curta, útil e auditável para supervisão/coordenação, sem ruído técnico desnecessário.
 
-### 5.2 Tela principal (DM) — padrão
-Título e status (🟢/🟠/🔴) + bloco Internet + serviços + Impacto + botões.
+### 6.2 Tela principal da DM
+- status executivo por unidade
+- leitura de Internet, Telefonia e Escallo
+- impacto resumido
+- botões curtos para navegação
 
-#### Linha “Internet” (reduz ruído e mantém semântica)
-A linha pai virou texto de estado:
+### 6.3 Linha “Internet”
+Modo consolidado:
+- `🌐 Internet — Online`
+- `🌐 Internet — Backup ativo`
+- `🌐 Internet — Indisponível`
+- `🌐 Internet — Instável`
 
-- Operante: `🌐 Internet — Online`
-- 1 link caiu: `🌐 Internet — Backup ativo`
-- 2 links caíram: `🌐 Internet — Indisponível`
-- Qualidade ruim: `🌐 Internet — Instável`
-
-**Regra de topo (head):**
-- 🔴 se (inet_down OR tel_down OR esc_down)
-- 🟠 se (qualidade ruim OR **one_link_down**)
-- 🟢 caso contrário
-
-**Espaçamento (respiração visual):**
-- 1 linha em branco após `🌐 Internet — <modo>` antes dos links.
-
-#### Ícones por operadora (sempre)
-- `↳ Link 1 — Mundivox ✅/🔴`
-- `↳ Link 2 — Valenet ✅/🔴`
-
-#### “Agora” vs “Hoje” (evita contradição)
-Quando um item estiver **DOWN agora**, a linha vira **duas linhas**:
-
-- `Agora: FORA 🔴`
-- `Hoje: xx,x% up | yy,y% qualidade — Termo`
-
-Quando estiver UP, mantém:
-- `Hoje: xx,x% up | yy,y% qualidade — Termo`
-
-**Notas técnicas:**
-- `q_part()` foi endurecido para **nunca** imprimir `None` (usa `N/D`).
-- Qualidade de Internet ainda é **geral** (um `INTERNET QUALITY`). Em contingência, “qualidade excelente” pode aparecer mesmo com uma operadora fora, pois a operação segue via outro link. Evolução recomendada: QUALITY por operadora (L1/L2).
-
-#### Impacto (marketing + operacional)
-- Normal: `Impacto: operação normal.`
-- 1 link caiu: `Impacto: operação com redundância ativa.`
-- 2 links caíram: `Impacto: operação com indisponibilidade de Internet.`
-- Qualidade ruim: `Impacto: operação com instabilidade.`
-
-### 5.3 Botões (DM)
-Teclado DM padrão (rodapé):
+### 6.4 Botões principais
 - Atendimento (2h)
 - Painel (Tempo real)
 - Disponibilidade Hoje
@@ -277,268 +173,357 @@ Teclado DM padrão (rodapé):
 - Evidências
 - Fonte (/where)
 
-**Callback_data relevantes (contrato):**
-- `sup:now`, `sup:24h`, `sup:7d`
-- `dm:avail_today`, `dm:qual_today`
-- `evm`, `evp:<svc>`, `evd:<svc>:<win>`, `evr:<svc>:<win>`, `evt:<svc>:<win>`
-- `where`, `att:2h`
+### 6.5 Home DM multi-unidades
+- UN1 — Eldorado
+- UN2 — Barreiro
+- UN3 — Alípio de Mello
+- `home` como retorno ao painel inicial
 
 ---
 
+## 7) DM consultiva (FIX6)
 
+Regras funcionais já consolidadas:
+- serviço explicitamente citado na mensagem atual vence contexto anterior
+- confirmações curtas, como “tem certeza?”, reutilizam o último contexto útil
+- “status atual” resolve para painel geral
+- perguntas fora de escopo deixam de cair em painel/home
+- probes curtos por serviço, como “Escallo” e “Telefone”, resolvem como status factual
 
-### 5.4 Home DM multi-unidades (Clínica) — baseline (v1)
-
-**Objetivo:** ao abrir a DM (ou enviar “oi”), o usuário vê **um único painel executivo** com o status **AGORA** (✅/⚠️/🔴/—) por unidade, e só aprofunda ao selecionar a unidade.
-
-**Entrada padrão:**
-- `/start` (DM) → Home Clínica
-- Texto livre no DM (não-comando) → Home Clínica
-
-**Conteúdo Home (somente “Agora”):**
-- **UN1 — Eldorado:**
-  - `🌐 Internet — Online | Backup ativo | Indisponível | Instável`
-  - `↳ Link 1 — Mundivox ✅/⚠️/🔴/—`
-  - `↳ Link 2 — Valenet ✅/⚠️/🔴/—`
-  - `📞 Telefonia ✅/⚠️/🔴/—`
-  - `☁️ Escallo ✅/⚠️/🔴/—`
-- **UN2 — Barreiro:**
-  - `🌐🔒 VPN — Conectada ✅ | Instável ⚠️ | FORA 🔴 | N/D —`
-- **UN3 — Alípio de Mello:**
-  - `🌐🔒 VPN — Conectada ✅ | Instável ⚠️ | FORA 🔴 | N/D —`
-
-**Regra de Instável (Home / VPN):**
-- `⚠️` quando `flaps_2h >= 2` (≥2 oscilações em 2h)
-- `🔴` quando state=DOWN
-- `✅` quando state=UP e flaps_2h < 2
-- `—` quando N/D
-
-**Incidente/Ocorrência (banner no topo):**
-- Prioridade: VPN_UN2 DOWN → VPN_UN3 DOWN → Internet UN1 indisponível → Telefonia/Escallo DOWN → Ocorrências (2h)
-
-**Navegação (botões):**
-- Home: `UN1 — Eldorado` | `UN2 — Barreiro` | `UN3 — Alípio de Mello` | `Fonte`
-- Detalhe UN2/UN3: `⬅️ Clínica (início)` | `Fonte`
-- Detalhe UN1: mantém teclado DM padrão + `⬅️ Clínica (início)`
-
-**Callback_data (contrato):**
-- `home` → volta Home Clínica
-- `unit:UN1` / `unit:UN2` / `unit:UN3` → abre detalhe da unidade
-
-**Anti-spam (DM produto):**
-- Em callbacks, preferir **edit_message_text**.
-- Se Telegram retornar `Message is not modified`, não enviar nova mensagem.
-
-### 5.5 DM consultiva — FIX6 (2026-03-15)
-
-Regras funcionais validadas em runtime real:
-- serviço explicitamente citado na mensagem atual tem prioridade sobre contexto anterior
-- mensagens de confirmação curta, como "tem certeza?", reutilizam o último contexto útil
-- "status atual" é sempre tratado como status geral
-- perguntas fora de escopo não acionam painel/home
-- probes curtos por serviço, como "Escallo" e "Telefone", resolvem como status factual do serviço
-
-Referências:
+Referências já documentadas:
 - PR #8 (merged)
 - Merge commit: `cbce6ee`
 - Commit FIX6: `c610a2a`
 - Tag: `v2026.03.15-fix6-dm-consultiva`
 
-## 6) UX “técnico” (Grupo NOC)
-- Anti-ruído: responde por **@menção** ou **reply**.
-- Botões técnicos: Status / Analyze / Timeline / Evidências / Fonte.
-- Mesma fonte de números (DB/LOG), IA opcional só para texto.
+---
+
+## 8) DM assistiva / híbrida (estado atual)
+
+> Esta é a principal atualização documental de 2026-03-18.  
+> A documentação agora passa a cobrir não só a FIX6, mas também o **motor conversacional atual** da DM.
+
+### 8.1 Princípio
+A DM precisa ser:
+- humana na conversa
+- curta na clarificação
+- factual quando consultar operação
+- segura quando sair do escopo
+- incapaz de inventar fato operacional
+
+### 8.2 Rotas formais da DM
+Rotas implementadas:
+- `consult`
+- `incident`
+- `clarify`
+- `social`
+- `help`
+- `none`
+
+Resumo:
+- **consult** → consulta factual baseada em intenção/serviço/período
+- **incident** → trata relato de incidente e direciona para atendimento 2h
+- **clarify** → fecha lacunas de escopo/contexto
+- **social** → saudações e contato humano leve
+- **help** → ajuda simples segura, fora do fato operacional
+- **none** → sem rota tratável; aplica fallback seguro
+
+### 8.3 Ordem de decisão (alto nível)
+1. sessão pendente / clarificação em aberto
+2. social determinístico
+3. help determinístico
+4. consult determinístico
+5. incidente determinístico
+6. fallback por classificador IA, se habilitado
+7. fallback seguro por clarificação / home / out-of-scope
+
+### 8.4 Componentes internos da DM
+- `noc_bot/handlers/chat.py` — gateway da mensagem livre
+- `noc_bot/dm_router.py` — decisão de rota
+- `noc_bot/dm_session.py` — contexto curto e pendências
+- `noc_bot/dm_intents.py` — parser factual
+- `noc_bot/dm_queries.py` — consulta à fonte real
+- `noc_bot/dm_presenter.py` — render factual
+- `noc_bot/ai_client.py` — IA opcional para classificar ou polir
+
+### 8.5 Social
+Exemplos:
+- `Oi`
+- `Oi, boa tarde`
+- `Bom dia`
+
+Comportamento:
+- responde de forma humana
+- não afirma DB/LOG/checagem operacional
+- não simula verificação que não ocorreu
+
+### 8.6 Help
+Exemplos:
+- `Qual é o site do speed test?`
+- `Como faço para medir a velocidade da internet?`
+
+Comportamento:
+- ajuda simples e segura
+- pode citar o Speedtest
+- não converte ajuda simples em fato operacional
+
+### 8.7 Consult
+Exemplos:
+- `Telefone ok aí?`
+- `Escallo`
+- `falhas hoje`
+- `status atual`
+
+Comportamento:
+- intenção é resolvida
+- consulta vai para DB/LOG/regras
+- presenter monta a base factual
+- IA só pode polir a frase quando permitido
+
+### 8.8 Incident
+Exemplos:
+- `Caiu tudo agora`
+- `Sem internet`
+- `parou agora`
+
+Comportamento:
+- incidente forte → rota `incident`
+- atendimento 2h / triagem é acionado
+- contexto útil do serviço pode ser salvo para follow-up
+
+### 8.9 Clarify
+Tipos documentados:
+- `service_scope`
+- `service_select`
+- `status_or_window`
+- `consult_or_incident`
+- `generic`
+
+Uso:
+- pedir clarificação curta
+- fechar se o usuário quer status atual, falha hoje ou resumo da semana
+- diferenciar consulta versus incidente em andamento
+- escolher serviço quando a pergunta veio vaga demais
+
+### 8.10 Contexto curto
+A sessão curta guarda:
+- último serviço
+- última intenção
+- último período
+- última rota
+- pendência de clarificação
+
+Objetivos:
+- suportar follow-up curto
+- responder “tem certeza?”
+- suportar retomadas curtas como `e a internet?` → `falhas hoje`
+
+### 8.11 Fora de escopo
+Perguntas fora do escopo operacional da DM devem:
+- evitar cair em painel/home indevidamente
+- responder com orientação curta de escopo
+- não gerar consulta factual fake
+
+### 8.12 IA opcional e flags
+A família `DM_ASSISTANT_*` controla a superfície da DM.
+
+Flags relevantes já presentes no código:
+- `DM_ASSISTANT_ENABLED`
+- `DM_ASSISTANT_SHADOW_MODE`
+- `DM_ASSISTANT_STYLE`
+- `DM_ASSISTANT_MAX_REPLY_LINES`
+- `DM_ASSISTANT_MIN_CONFIDENCE`
+- `DM_ASSISTANT_ENABLE_AI_FINISH`
+- `DM_ASSISTANT_ENABLE_DM_ROUTER`
+- `DM_ASSISTANT_ENABLE_AI_CLASSIFIER`
+- `DM_ASSISTANT_CLASSIFIER_SHADOW_MODE`
+- `DM_ASSISTANT_ENABLE_CLARIFY`
+- `DM_ASSISTANT_ENABLE_SESSION_CONTEXT`
+- `DM_ASSISTANT_SESSION_TTL_S`
+- `DM_ASSISTANT_MAX_CLARIFY_TURNS`
+- `DM_ASSISTANT_ENABLE_SOCIAL`
+- `DM_ASSISTANT_ENABLE_GENERAL_HELP`
+- `DM_ASSISTANT_ENABLE_AI_GENERAL`
+- `DM_ASSISTANT_HUMOR_ENABLED`
+
+Papel da IA:
+- classificar quando o determinismo não fechou bem
+- modular tom ou acabamento textual
+- responder help/social quando permitido
+
+Limite da IA:
+- não gerar fato operacional
+- não alterar CID, severidade, horário, fonte ou estado
+- não usar humor em cenário crítico
+
+### 8.13 Guardrails
+A IA pode:
+- interpretar linguagem natural
+- pedir clarificação curta
+- responder saudações
+- orientar ajuda simples
+- modular tom da resposta
+
+A IA não pode:
+- inventar status operacional
+- afirmar incidente sem base
+- trocar severidade, CID ou estado
+- transformar help/social em suposta verificação real
+
+### 8.14 Testes e smoke tests
+Casos mínimos já assumidos pela documentação atual:
+- `Oi, boa tarde`
+- `Qual é o site do speed test?`
+- `Como faço para medir a velocidade da internet?`
+- `Telefone ok aí?`
+- `E a internet?`
+- `falhas hoje`
+- `Caiu tudo agora`
+- `evidência telefonia`
+
+Se o bundle implantado incluir `tests/`, recomenda-se executar a suíte antes do restart.
+
+Observação: o runtime analisado inclui `tests/test_dm_router.py`, `tests/test_dm_guardrails.py`, `tests/test_callbacks.py` e `tests/test_dm_session.py`.
+
+### 8.15 Documento detalhado de apoio
+- `docs/DM_ASSISTIVA_HIBRIDA.md`
 
 ---
 
-## 7) Evidências (prova) — contrato de entrega
-Trigger aceito (texto natural): `evidência`, `evidencias`, `prova`, `provas`.
-
-**Regra de segurança:** exigir o serviço (evita prova errada).  
-Exemplos: `evidência telefonia`, `evidência escallo`, `evidência link 1`, `evidência link 2`.
-
-Entrega em 3 mensagens (padrão):
-1) Painel/Contexto
-2) Evidência compacta + botões
-3) Texto pronto para operadora com **5 CIDs** mais recentes (+ nota “há mais”)
+## 9) UX “técnico” (Grupo NOC)
+- anti-ruído: responde por @menção ou reply
+- botões técnicos: status / analyze / timeline / evidências / fonte
+- mesma fonte factual da DM
+- IA opcional continua sem poder inventar número ou estado
 
 ---
 
-## 8) Comandos operacionais do bot (principais)
-- `/where` → exibe `BOT_VERSION|build`, `SOURCE=DB/LOG`, freshness e paths
-- `/status` → estado atual por serviço
-- `/timeline N` → últimos N eventos
-- `/analyze 24h|7d|30d` → resumo interpretado (sem inventar números)
-- Atendimento (2h) via botão ou gatilho por texto (reclamação)
+## 10) Evidências (prova) — contrato
+Triggers aceitos:
+- `evidência`
+- `evidencias`
+- `prova`
+- `provas`
+
+Regra:
+- exigir o serviço para evitar prova errada
+
+Entrega padrão:
+1. painel/contexto
+2. evidência compacta
+3. texto pronto para operadora com até 5 CIDs recentes
 
 ---
 
-## 9) Deploy seguro (padrão oficial)
-
-### 9.1 Conceito
-O deploy é **ZIP → unzip stage → rsync espelho**.  
-Para não apagar entrypoint nem env/venv: atualizar **somente** `/opt/telegram-bot/noc_bot/`.
-
-### 9.2 Deploy seguro (somente `noc_bot/`)
-**Pré:** ZIP em `/tmp/noc_bot_patched.zip`
-
-```bash
-sudo bash -lc '
-set -euo pipefail
-ZIP="/tmp/noc_bot_patched.zip"
-APP="/opt/telegram-bot"
-SVC="telegram-bot.service"
-TS="$(date +%F_%H%M%S)"
-BAK="/opt/telegram-bot.bak_${TS}"
-STAGE="/tmp/noc_patch_${TS}"
-
-command -v unzip >/dev/null
-command -v rsync >/dev/null
-
-USR="$(systemctl show -p User --value "$SVC" || true)"
-[[ -n "$USR" ]] || USR="telegram-bot"
-
-systemctl stop "$SVC"
-
-mkdir -p "$BAK"
-cp -a "$APP/bot.py" "$BAK/" 2>/dev/null || true
-rsync -a --delete "$APP/noc_bot/" "$BAK/noc_bot/"
-
-rm -rf "$STAGE"; mkdir -p "$STAGE"
-unzip -q "$ZIP" -d "$STAGE"
-rsync -a --delete "$STAGE/noc_bot/" "$APP/noc_bot/"
-chown -R "$USR":"$USR" "$APP/noc_bot"
-
-# sanity compile
-PYTHONDONTWRITEBYTECODE=1 /home/telegram-bot/venv/bin/python -B -m py_compile   "$APP/noc_bot/ui/panels.py"   "$APP/noc_bot/ui/keyboards.py"   "$APP/noc_bot/handlers/callbacks.py"   "$APP/noc_bot/handlers/commands.py"
-
-systemctl start "$SVC"
-
-# sanity logs
-journalctl -u "$SVC" --since "15 min ago" --no-pager -o cat  | egrep -i "Traceback|IndentationError|SyntaxError|ModuleNotFoundError|ImportError|can\x27t parse entities|CRITICAL"  || echo "OK: sem erros fatais"
-'
-```
-
-### 9.3 Rollback
-```bash
-sudo bash -lc '
-set -euo pipefail
-APP="/opt/telegram-bot"
-SVC="telegram-bot.service"
-BAK="$(ls -1dt /opt/telegram-bot.bak_* 2>/dev/null | head -n 1)"
-[[ -n "$BAK" ]] || { echo "FATAL: não achei backup"; exit 2; }
-
-systemctl stop "$SVC"
-rsync -a --delete "$BAK/noc_bot/" "$APP/noc_bot/"
-cp -a "$BAK/bot.py" "$APP/bot.py" 2>/dev/null || true
-systemctl start "$SVC"
-systemctl --no-pager --full status "$SVC" | sed -n "1,14p"
-'
-```
-
-**Nota crítica:** hotfix feito direto no servidor deve virar “release ZIP” ou será sobrescrito por ZIP antigo.
+## 11) Comandos operacionais do bot
+- `/where`
+- `/status`
+- `/timeline N`
+- `/analyze 24h|7d|30d`
+- Atendimento (2h)
+- Evidência por texto natural
 
 ---
 
+## 12) Deploy seguro (padrão)
 
-### 9.4 Release/Deploy padronizado (produção): `noc-release`
+### 12.1 Conceito
+Deploy padrão é **ZIP → unzip stage → rsync espelho**.  
+No fluxo seguro, atualiza-se **somente** `noc_bot/` para preservar `bot.py`, `.env`, `venv`, DB/state e logs.
 
-Para reduzir passos manuais e manter rastreabilidade, o deploy em produção pode (e deve) ser feito pelo wrapper:
+### 12.2 Princípios
+- evitar deploy durante incidente ativo
+- ter rollback real
+- não versionar segredos
+- validar serviço e logs pós-deploy
+- incluir smoke test da DM híbrida no critério de aceite
 
-- Script: `/usr/local/sbin/noc-release`
-- Release (gera artefatos em `/tmp`): `sudo noc-release`
-- Deploy seguro (stop→backup→unzip stage→rsync noc_bot/→start→sanity): `sudo noc-release --deploy`
+### 12.3 Smoke test pós-deploy (mínimo)
+DM:
+- `Oi, boa tarde`
+- `Qual é o site do speed test?`
+- `Telefone ok aí?`
+- `E a internet?`
+- `falhas hoje`
+- `Caiu tudo agora`
+- `evidência telefonia`
 
-Contratos do tooling (produção):
-- Gera:
-  - `/tmp/noc_bot_release_YYYY-MM-DD_HHMMSS.zip`
-  - `/tmp/noc_bot_patched.zip` (cópia padrão para deploy)
-- Backup do deploy:
-  - `/opt/telegram-bot.bak_YYYY-MM-DD_HHMMSS/`
-- Sanity gate pós-deploy (ajuste 2026-02-28):
-  - `py_compile` sem bytecode (evita `__pycache__` owned por root)
-  - Gate do journal só para erros fatais (NÃO usar `400 Bad Request` como critério de rollback)
+Callbacks:
+- home
+- painel agora
+- disponibilidade hoje
+- qualidade hoje
+- resumo 24h
+- evidências
+- atendimento 2h
+- where
 
-### 9.5 Cofre persistente de releases (produção)
+### 12.4 Testes formais
+Se o bundle implantado incluir `tests/`:
+- rodar `python -m compileall bot.py noc_bot tests`
+- executar a suíte disponível antes do restart
+- só depois reiniciar `telegram-bot.service`
 
-> `/tmp` é volátil. Para auditoria e rollback, manter cofre persistente.
-
-- Diretório: `/var/lib/noc/releases` (owner `telegram-bot`, mode `0750`)
-- Ponteiro do último release aplicado:
-  - `/var/lib/noc/releases/LAST_RELEASE.zip`
-- Integridade:
-  - `/var/lib/noc/releases/SHA256SUMS` (verificação: `sha256sum -c SHA256SUMS` rodando como `telegram-bot`)
-- Governança:
-  - `/var/lib/noc/releases/CHANGELOG_RELEASES.log` (1 entrada por deploy aplicado)
-
-**Último deploy aplicado (2026-02-28 11:47 BRT):**
-- `LAST_RELEASE.zip` → `noc_bot_release_2026-02-28_114719.zip`
-- `SHA256 (artefato aplicado)`:
-  - `e089a920c196f1b04e2cd677d73a034c54d50f0c4aae0b89d1f9a192ff582129`
-- Backup:
-  - `/opt/telegram-bot.bak_2026-02-28_114719`
-- Prova forense (runtime == release):
-  - `sha256(commands.py)=595b9fca19cf168682703d273e37e7e50aa996b1304d48be6bf232db14d08c36` (filesystem == zip)
+### 12.5 Rollback
+- voltar para tag/release anterior
+- restaurar backup
+- reiniciar serviço
+- validar `/where`, logs e smoke test essencial
 
 ---
 
-## 10) Troubleshooting rápido (produção)
+## 13) Troubleshooting rápido
 
-### 10.1 Bot reiniciando em loop
-- Verificar `ExecStart` e se existe `bot.py` no path esperado.
+### 13.1 Bot em loop
+- conferir `ExecStart`
+- conferir presença de `bot.py`
 - `journalctl -u telegram-bot -o cat -n 80`
 
-### 10.2 “DB stale”
-- Verificar `noc-sqlite-tailer.service`
-- Verificar escrita em `/var/lib/noc/noc.db`
-- Bot em AUTO deve cair para LOG quando necessário.
+### 13.2 DM respondendo estranho
+- conferir flags `DM_ASSISTANT_*`
+- verificar shadow modes
+- validar se o texto caiu em `social`, `help`, `consult`, `incident` ou `clarify`
+- revisar logs do roteador / presenter / AI finish
 
-### 10.3 Formatação quebrada / “None”
-- `py_compile` no arquivo alterado
-- Helpers:
-  - `q_part()` deve retornar string sempre (`N/D` quando faltar dado)
-  - `today_line()` deve formatar DOWN com duas linhas (`Agora` + `Hoje`)
+### 13.3 “DB stale”
+- conferir `noc-sqlite-tailer.service`
+- conferir escrita em `/var/lib/noc/noc.db`
+- lembrar que o bot em AUTO deve cair para LOG quando necessário
+
+### 13.4 Clarificação inesperada
+- revisar contexto curto
+- revisar TTL da sessão
+- revisar se a pergunta ficou sem serviço, sem janela ou ambígua
 
 ---
 
-## 11) Changelog (últimas mudanças relevantes)
+## 14) Changelog consolidado
 
+- 2026-03-18 — documentação oficial passa a cobrir formalmente a **DM assistiva/híbrida** além da FIX6.
+- 2026-03-18 — criado `docs/DM_ASSISTIVA_HIBRIDA.md` para fechar o gap entre código e documentação.
+- 2026-03-18 — `README.md`, `docs/README.md`, `docs/DEPLOY.md`, `baseline/00_INDEX_CANONICO.md` e este canônico foram atualizados para refletir a camada DM atual.
+- 2026-03-18 — toolkit `tools/ops` consolidado como parte explícita da governança.
 - 2026-03-15 — PR #8 mergeada em `main`, consolidando a DM consultiva com parser determinístico, query factual, presenter e roteamento consultivo.
-- 2026-03-15 — FIX6 homologada em runtime real na VM bot e tagueada como `v2026.03.15-fix6-dm-consultiva`.
-- 2026-03-15 — DM consultiva: serviço explícito na mensagem atual passa a vencer contexto anterior.
-- 2026-03-15 — DM consultiva: mensagens de confirmação curta ("tem certeza?") passam a reutilizar o último contexto útil.
-- 2026-03-15 — DM consultiva: "status atual" passa a resolver sempre para painel geral.
-- 2026-03-15 — DM consultiva: perguntas fora de escopo deixam de cair em painel/home.
-- 2026-02-28 — Release/Deploy: `noc-release` (produção) padroniza release ZIP + deploy seguro com rollback e sanity gate (ignora `400 Bad Request`; falha só em erro fatal).
-- 2026-02-28 — Cofre persistente: `/var/lib/noc/releases` com `SHA256SUMS`, `CHANGELOG_RELEASES.log` e symlink `LAST_RELEASE.zip`.
-- 2026-02-28 — Evidência: integridade verificada (hash de arquivo em produção bate com arquivo dentro de `LAST_RELEASE.zip`).
-
-- 2026-02-26 — DM: linha pai Internet virou modo texto (`Online/Backup ativo/Indisponível/Instável`), reduzindo ruído visual.  
-- 2026-02-26 — DM: adicionada linha em branco após cabeçalho Internet (melhor legibilidade).  
-- 2026-02-26 — DM: quando DOWN agora, adiciona `Agora: FORA 🔴` e separa em duas linhas (evita contradição com % do dia).  
-- 2026-02-26 — Impacto: linguagem comercial `operação com redundância ativa` em contingência.  
-- 2026-02-26 — Deploy: padrão oficial passou a atualizar **somente** `noc_bot/` (preserva `bot.py/.env/venv`).  
-- 2026-02-26 — Correção: `q_part()` não imprime `None` (usa `N/D`).
-
-- 2026-02-27 — DM (padronização): `cmd_evidence_request` passou a usar **somente** `build_evidence_compact` (`noc_bot.evidence.builder`) + `evidence_kb`; `cmd_supervisor_summary` passou a usar `build_dm_panel_un1_v2` (`noc_bot.ui.panels`) + última ocorrência + próxima ação; removidos shims/try/except e defs locais em `handlers/commands.py`.
-- 2026-02-27 — Deploy: aplicado patch via ZIP limpo (sem `.bak/.orig/.pyc/__pycache__`) no fluxo oficial “atualiza somente `noc_bot/`”.
-- 2026-02-27 — HOTFIX (DB-first): corrigido `NameError: raw_col is not defined` em `sources.py` (`get_last_n_events` e `get_prefetch_before`) adicionando `raw_col = _detect_raw_col()` após `check_col = _detect_check_col()`. Evidência: contador `journalctl | grep -c "NameError: name 'raw_col'"` = `0` após restart.
-- 2026-02-27 — Release oficial (limpo): gerado `/tmp/noc_bot_release_2026-02-27_022037.zip` (cópia padrão `/tmp/noc_bot_patched.zip`) com SHA256 `687c747f6f9115a7faf164aea04fe9b1dc88fd5a08085267fec9da3c78151576`.
-- 2026-02-27 — Validação DM (operacional): `sup:now`, `evidência link 1` (compacta), `evidência completa` (organizada/operadora), `texto pronto (operadora)` (até 5 CIDs mais recentes, ou menos se não existirem 5 na janela), `sup:24h` (painel v2 + última ocorrência + próxima ação) — OK.
+- 2026-03-15 — FIX6 homologada em runtime real e tagueada como `v2026.03.15-fix6-dm-consultiva`.
+- 2026-02-28 — `noc-release` padroniza release ZIP + deploy seguro + rollback e sanity gate.
+- 2026-02-28 — cofre persistente de releases em `/var/lib/noc/releases`.
+- 2026-02-27 — padronização de evidência, patch em `sources.py` e validação operacional da DM.
+- 2026-02-26 — melhorias de UX na DM, incluindo modos da Internet e contingência.
 
 ---
 
-## 12) Próximos passos recomendados (NOC)
-1) Anti-flap na fonte (RouterOS Netwatch): debounce/cooldown  
-2) Hardening API-SSL 9005 (allowlist)  
-3) Qualidade por operadora (L1/L2) para remover “qualidade geral” em contingência  
-4) Multi-unidade (UN2/UN3) reaproveitando contrato e core
+## 15) Próximos passos recomendados
+1. anti-flap na fonte (RouterOS / Netwatch)
+2. hardening API-SSL 9005 (allowlist)
+3. qualidade por operadora (L1/L2)
+4. expansão multi-unidade (UN2 / UN3)
+5. refinamento fino de clarificação, continuidade de contexto e respostas binárias diretas
 
+---
 
 ## SNAPSHOTS — Effective Config (colado) — 2026-02-28 (BRT)
 
-### 10.2 systemd (noc-sqlite-tailer) — systemctl cat noc-sqlite-tailer
-
+### systemd (noc-sqlite-tailer) — `systemctl cat noc-sqlite-tailer`
 ```ini
 # /etc/systemd/system/noc-sqlite-tailer.service
 [Unit]
@@ -558,7 +543,6 @@ Environment=PYTHONUNBUFFERED=1
 ExecStart=/usr/local/bin/noc-sqlite-tailer.py
 Restart=always
 RestartSec=2
-# hardening básico
 NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
@@ -583,36 +567,27 @@ ReadOnlyPaths=/var/log/mikrotik
 [Service]
 User=telegram-bot
 Group=telegram-bot
-
-# systemd cria e garante owner/perms (para DB + state)
 StateDirectory=noc
 StateDirectoryMode=0750
-
 Environment=LOG_PATH=/var/log/mikrotik/un1.log
 Environment=DB_PATH=/var/lib/noc/noc.db
 Environment=STATE_PATH=/var/lib/noc/tailer.state.json
-
-# blindagem contra baixo volume (definitivo)
 Environment=FLUSH_EVERY_SECONDS=5
 Environment=STATE_SAVE_EVERY_SECONDS=5
 Environment=SLEEP_IDLE=0.5
-
-# bootstrap/backfill
 Environment=BOOTSTRAP_LINES=20000
 Environment=BACKFILL_ENABLE=1
 Environment=BACKFILL_MAX_BYTES=209715200
 Environment=BACKFILL_LINES=50000
 ```
 
-### 10.3 rsyslog — bind UDP/514 (/etc/rsyslog.d/10-mikrotik.conf)
-
+### rsyslog — bind UDP/514 (`/etc/rsyslog.d/10-mikrotik.conf`)
 ```conf
 module(load="imudp")
 input(type="imudp" address="192.168.10.20" port="514")
 ```
 
-### 10.3 rsyslog — filtro + raw log (/etc/rsyslog.d/20-mikrotik-files.conf)
-
+### rsyslog — filtro + raw log (`/etc/rsyslog.d/20-mikrotik-files.conf`)
 ```conf
 if ($fromhost-ip == "192.168.20.1") then {
   action(type="omfile" file="/var/log/mikrotik/un1.log")
@@ -620,8 +595,7 @@ if ($fromhost-ip == "192.168.20.1") then {
 }
 ```
 
-### 10.3 logrotate (/etc/logrotate.d/mikrotik-un1)
-
+### logrotate (`/etc/logrotate.d/mikrotik-un1`)
 ```conf
 /var/log/mikrotik/un1.log {
   daily
@@ -641,14 +615,12 @@ if ($fromhost-ip == "192.168.20.1") then {
 }
 ```
 
-### 10.3 prova do socket UDP/514 (ss -lunp | grep :514)
-
+### prova do socket UDP/514 (`ss -lunp | grep :514`)
 ```text
-UNCONN 0      0                         192.168.10.20:514        0.0.0.0:*    users:(("rsyslogd",pid=865,fd=6))        
+UNCONN 0      0                         192.168.10.20:514        0.0.0.0:*    users:(("rsyslogd",pid=865,fd=6))
 ```
 
-### 10.4 SQLite schema (sqlite3 /var/lib/noc/noc.db .schema)
-
+### SQLite schema (`sqlite3 /var/lib/noc/noc.db .schema`)
 ```sql
 CREATE TABLE events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -668,8 +640,7 @@ CREATE INDEX idx_events_ts ON events(ts);
 CREATE INDEX idx_events_unit_check_ts ON events(unit, check_name, ts);
 ```
 
-### 10.4 prova WAL (ls -lah /var/lib/noc/noc.db*)
-
+### prova WAL (`ls -lah /var/lib/noc/noc.db*`)
 ```text
 -rw-r----- 1 telegram-bot telegram-bot 44K Feb 28 13:19 /var/lib/noc/noc.db
 -rw-r----- 1 telegram-bot telegram-bot 32K Feb 28 15:09 /var/lib/noc/noc.db-shm
