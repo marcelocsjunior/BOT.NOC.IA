@@ -3,7 +3,7 @@ from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 
 # =====================================================================================
-# DM (supervisora) — UX produto (contrato)
+# DM (supervisora) — UX ALTIS (contrato)
 # =====================================================================================
 
 def build_dm_keyboard() -> InlineKeyboardMarkup:
@@ -23,7 +23,7 @@ def build_dm_keyboard() -> InlineKeyboardMarkup:
         ],
         [
             InlineKeyboardButton("🧾 Evidências", callback_data="evm"),
-            InlineKeyboardButton("🧠 Fonte", callback_data="where"),
+            InlineKeyboardButton("🧠 Fonte (/where)", callback_data="where"),
         ],
     ]
     return InlineKeyboardMarkup(rows)
@@ -35,7 +35,7 @@ def build_dm_home_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("UN1 — Eldorado", callback_data="unit:UN1")],
         [InlineKeyboardButton("UN2 — Barreiro", callback_data="unit:UN2")],
         [InlineKeyboardButton("UN3 — Alípio de Mello", callback_data="unit:UN3")],
-        [InlineKeyboardButton("🧠 Fonte", callback_data="where")],
+        [InlineKeyboardButton("🧠 Fonte (/where)", callback_data="where")],
     ]
     return InlineKeyboardMarkup(rows)
 
@@ -44,7 +44,7 @@ def build_dm_unit_vpn_keyboard() -> InlineKeyboardMarkup:
     """Teclado do detalhe UN2/UN3 (VPN)."""
     rows = [
         [InlineKeyboardButton("⬅️ Clínica (início)", callback_data="home")],
-        [InlineKeyboardButton("🧠 Fonte", callback_data="where")],
+        [InlineKeyboardButton("🧠 Fonte (/where)", callback_data="where")],
     ]
     return InlineKeyboardMarkup(rows)
 
@@ -63,7 +63,7 @@ def build_group_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("Timeline 50", callback_data="timeline:50")],
         [
             InlineKeyboardButton("Evidências", callback_data="evm"),
-            InlineKeyboardButton("Fonte (DB/LOG)", callback_data="where"),
+            InlineKeyboardButton("Fonte (/where)", callback_data="where"),
         ],
     ]
     return InlineKeyboardMarkup(rows)

@@ -215,13 +215,13 @@ async def cmd_where(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
     txt = (
-        "Comandos NOC:\n"
-        "/where — diagnóstico do bot/fonte\n"
+        "ALTIS — supervisão tecnológica com IA integrada\n"
+        "/where — diagnóstico da fonte e do runtime\n"
         "/status — status (grupo=técnico | DM=supervisão)\n"
         "/timeline [N] — últimos N eventos\n"
         "/analyze [24h|7d|30d] — KPI + recomendação (determinístico)\n"
         "/atendimento — triagem 2h (DM)\n\n"
-        "DM híbrida: você pode falar naturalmente.\n"
+        "DM híbrida do ALTIS: você pode falar naturalmente.\n"
         f"{_dm_natural_examples()}\n"
     )
     await _send(update, context, txt, reply_markup=_kb(update))
@@ -719,7 +719,7 @@ async def cmd_attendance_2h(update: Update, context: ContextTypes.DEFAULT_TYPE, 
 
     # ===== respostas (SEM parágrafo) =====
     if incident_now:
-        title = f"🔴 UN1 — Atendimento (2h) — {focus_label}"
+        title = f"🔴 ALTIS — Atendimento (2h) — {focus_label}"
         lines = [
             title,
             "",
@@ -733,7 +733,7 @@ async def cmd_attendance_2h(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         return
 
     if confirmed_2h:
-        title = f"🟠 UN1 — Atendimento (2h) — {focus_label}"
+        title = f"🟠 ALTIS — Atendimento (2h) — {focus_label}"
         lines = [
             title,
             "",
@@ -745,7 +745,7 @@ async def cmd_attendance_2h(update: Update, context: ContextTypes.DEFAULT_TYPE, 
         ]
         await _send_dm_hub(update, context, "\n".join(lines), reply_markup=_kb(update))
         return
-    title = f"🟢 UN1 — Atendimento (2h) — {focus_label}"
+    title = f"🟢 ALTIS — Atendimento (2h) — {focus_label}"
     if focus == "TEL":
         suspect = "Suspeita: operadora/SIP/PABX/ramais."
         next_step = "➡️ Próximo passo: gerar evidência da Telefonia"

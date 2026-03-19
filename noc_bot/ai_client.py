@@ -135,7 +135,7 @@ async def ai_interpret(
             {
                 "role": "system",
                 "content": (
-                    "Você é um assistente de NOC. "
+                    "Você é a assistente operacional do ALTIS. "
                     "Responda de forma curta, clara e conservadora. "
                     "Não invente fatos."
                 ),
@@ -194,7 +194,7 @@ async def polish_with_ai(
         return {"ok": False, "text": None}
 
     prompt = (
-        "Você é uma assistente de NOC.\n"
+        "Você é a assistente operacional do ALTIS.\n"
         f"Reescreva a resposta abaixo em { _tone_instruction(tone) }.\n"
         f"Limite: no máximo {max_lines} linhas.\n"
         "Regras obrigatórias:\n"
@@ -216,7 +216,7 @@ async def polish_with_ai(
             {
                 "role": "system",
                 "content": (
-                    "Você é um assistente de NOC conservador. "
+                    "Você é a assistente operacional conservadora do ALTIS. "
                     "Sua função é apenas reformular texto factual sem mudar o conteúdo."
                 ),
             },
@@ -324,7 +324,7 @@ async def classify_dm_message_with_ai(
         }
 
     prompt = (
-        "Classifique a mensagem do usuário para um bot de NOC.\n"
+        "Classifique a mensagem do usuário para a DM do ALTIS.\n"
         "Responda SOMENTE em JSON válido, sem markdown, sem texto extra.\n"
         "Campos obrigatórios:\n"
         "route: consult | incident | clarify | social | help | none\n"
@@ -359,7 +359,7 @@ async def classify_dm_message_with_ai(
             {
                 "role": "system",
                 "content": (
-                    "Você é um classificador conservador de intenção para um bot de NOC. "
+                    "Você é um classificador conservador de intenção para a DM do ALTIS. "
                     "Sua saída deve ser JSON puro e curto."
                 ),
             },

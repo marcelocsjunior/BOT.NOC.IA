@@ -16,7 +16,7 @@ def build_dm_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("🚑 Atendimento 2h", callback_data="att:2h"), InlineKeyboardButton("🧾 Evidências", callback_data="evm")],
         [InlineKeyboardButton("📊 Disponibilidade hoje", callback_data="dm:avail_today"), InlineKeyboardButton("📈 Qualidade hoje", callback_data="dm:qual_today")],
         [InlineKeyboardButton("🕒 Resumo 24h", callback_data="sup:24h"), InlineKeyboardButton("📅 Semana", callback_data="sup:7d")],
-        [InlineKeyboardButton("🧠 Fonte / diagnóstico", callback_data="where")],
+        [InlineKeyboardButton("🧠 Fonte (/where)", callback_data="where")],
     ]
     return InlineKeyboardMarkup(rows)
 
@@ -25,16 +25,16 @@ def build_dm_home_keyboard() -> InlineKeyboardMarkup:
     rows = [
         [InlineKeyboardButton("UN1 — Eldorado", callback_data="unit:UN1")],
         [InlineKeyboardButton("UN2 — Barreiro", callback_data="unit:UN2"), InlineKeyboardButton("UN3 — Alípio", callback_data="unit:UN3")],
-        [InlineKeyboardButton("🖥️ Painel UN1 agora", callback_data="sup:now")],
-        [InlineKeyboardButton("🧠 Fonte / diagnóstico", callback_data="where")],
+        [InlineKeyboardButton("🖥️ Painel da unidade", callback_data="sup:now")],
+        [InlineKeyboardButton("🧠 Fonte (/where)", callback_data="where")],
     ]
     return InlineKeyboardMarkup(rows)
 
 
 def build_dm_unit_vpn_keyboard() -> InlineKeyboardMarkup:
     rows = [
-        [InlineKeyboardButton("🏥 Clínica", callback_data="home"), InlineKeyboardButton("🖥️ Painel UN1", callback_data="sup:now")],
-        [InlineKeyboardButton("🧠 Fonte / diagnóstico", callback_data="where")],
+        [InlineKeyboardButton("🏥 Clínica", callback_data="home"), InlineKeyboardButton("🖥️ Painel da unidade", callback_data="sup:now")],
+        [InlineKeyboardButton("🧠 Fonte (/where)", callback_data="where")],
     ]
     return InlineKeyboardMarkup(rows)
 
@@ -44,7 +44,7 @@ def build_group_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("Status", callback_data="status")],
         [InlineKeyboardButton("Analyze 24h", callback_data="analyze:24h"), InlineKeyboardButton("Analyze 7d", callback_data="analyze:7d")],
         [InlineKeyboardButton("Timeline 50", callback_data="timeline:50")],
-        [InlineKeyboardButton("Evidências", callback_data="evm"), InlineKeyboardButton("Fonte (DB/LOG)", callback_data="where")],
+        [InlineKeyboardButton("Evidências", callback_data="evm"), InlineKeyboardButton("Fonte (/where)", callback_data="where")],
     ]
     return InlineKeyboardMarkup(rows)
 

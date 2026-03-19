@@ -151,10 +151,10 @@ def build_panel_un1(
 
 
 # =====================================================================================
-# DM UX v2 — Assistente de Operação (IA)
+# DM UX v2 — ALTIS
 # =====================================================================================
 
-DM_TITLE_DEFAULT = "UN1 — Assistente de Operação (IA) (Tempo real)"
+DM_TITLE_DEFAULT = "ALTIS — Supervisão tecnológica com IA integrada"
 
 
 
@@ -649,7 +649,7 @@ def build_dm_availability_today(latest: dict, events_recent: list, now_utc: date
     head = "🔴" if (m["inet_down"] or m["s_tel"] == "DOWN" or m["s_esc"] == "DOWN") else "🟢"
 
     lines = [
-        f"📊 {head} UN1 — Disponibilidade Hoje (IA)",
+        f"📊 {head} ALTIS — Disponibilidade Hoje",
         "",
         f"🌐 Link 1 (Mundivox): {_fmt_pct(m['p_l1'].pct)} up",
         f"🌐 Link 2 (Valenet): {_fmt_pct(m['p_l2'].pct)} up",
@@ -677,7 +677,7 @@ def build_dm_quality_today(latest: dict, events_recent: list, now_utc: datetime)
         return f"{label}: {_fmt_pct(pct)} — {term or 'N/D'}"
 
     lines = [
-        f"📈 {head} UN1 — Qualidade Hoje (IA)",
+        f"📈 {head} ALTIS — Qualidade Hoje",
         "",
         _q_line("🌐 Link 1 (Mundivox)", m["s_l1"], m["p_q_l1"].pct, m["term_l1"]),
         _q_line("🌐 Link 2 (Valenet)", m["s_l2"], m["p_q_l2"].pct, m["term_l2"]),
@@ -794,7 +794,7 @@ def build_dm_home_multiunit(latest: dict, flaps_2h: dict[str, int]) -> str:
     vpn3_line = "🌐🔒 VPN — N/D —" if s_vpn3 is None else ("🌐🔒 VPN — FORA 🔴" if s_vpn3 == "DOWN" else ("🌐🔒 VPN — Instável ⚠️" if (s_vpn3 == "UP" and f_vpn3 >= 2) else "🌐🔒 VPN — Conectada ✅"))
 
     lines = [
-        f"{head} Clínica Elcenter — Painel Geral — Assistente de Operação (IA)",
+        f"{head} ALTIS — Supervisão tecnológica com IA integrada",
         "(Tempo real)",
     ]
     if banner:
