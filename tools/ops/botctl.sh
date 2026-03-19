@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
-OPS_DIR="$ROOT/tools/ops"
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+OPS_DIR="$SCRIPT_DIR"
+REPO_ROOT="$(cd "$OPS_DIR/../.." && pwd)"
 
 usage() {
   cat <<USAGE
@@ -46,7 +47,10 @@ run() {
   local target="$1"
   shift || true
   require_file "$target"
-  "$target" "$@"
+  (
+    cd "$REPO_ROOT"
+    "$target" "$@"
+  )
 }
 
 case "$ACTION" in
@@ -81,6 +85,7 @@ VM_BOT_USER=$VM_BOT_USER
 REMOTE_BASE=$REMOTE_BASE
 REMOTE_SERVICE=$REMOTE_SERVICE
 OPS_DIR=$OPS_DIR
+REPO_ROOT=$REPO_ROOT
 OUT
     ;;
   help|-h|--help)
