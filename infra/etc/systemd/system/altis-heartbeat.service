@@ -1,0 +1,6 @@
+[Unit]
+Description=ALTIS heartbeat emit NOC SELFTEST
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/altis-heartbeat.sh
