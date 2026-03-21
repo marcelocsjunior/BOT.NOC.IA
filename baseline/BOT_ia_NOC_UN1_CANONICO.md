@@ -2,12 +2,14 @@
 
 **Unidade:** UN1  
 **Timezone:** America/Sao_Paulo (BRT)  
-**ATUALIZADO_EM:** 2026-03-18 (BRT)  
-**DATA_BASELINE (baseline vigente):** 2026-03-18  
+**ATUALIZADO_EM:** 2026-03-20 (BRT)  
+**DATA_BASELINE (baseline vigente):** 2026-03-20  
 **BOT_VERSION|build (último observado comprovado):** `v2026.03.15-dm-fix6|build=2026-03-15_182955`  
 **Política:** este arquivo é a **única fonte da verdade** do projeto. Saídas “effective config” devem ser coladas nas seções de snapshots quando disponíveis.  
 **Baseline histórico de referência:** `AS_BUILT_ATUAL=UN1_AS_BUILT_SNAPSHOT_2026-02-25_v11.md` | `DOC_MASTER_ATUAL=BOT_ia_NOC_UN1_Documento_Master_2026-02-25_v7.md`  
 **Objetivo:** NOC operacional auditável para dual-WAN com ingestão confiável, histórico consultável, UX executiva na DM e camada conversacional híbrida sem romper a verdade operacional.
+
+**Observação validada em produção (2026-03-20):** heartbeat/SELFTEST local na VM bot ativo, com `/where` em `SOURCE=DB(ok)` e `last_db_ts` compatível com o timer.
 
 ---
 
@@ -28,43 +30,62 @@
 5. **Se faltar dado, marcar N/D.**  
    Não inventar. Nem no bot, nem na documentação.
 
+6. **Freshness operacional não deve depender só de transição real.**  
+   Um `SELFTEST` local controlado é permitido quando entra no mesmo pipeline factual, usa o contrato canônico de evento e é tratado como ruído operacional para não poluir KPI/UX.
+
 ---
 
 ## 2) Arquitetura em produção (AS-IS)
 
-### 2.1 Pipeline end-to-end
+### 2.1 Pipeline end-to-end factual
 **RouterOS 7 (UN1)** → **syslog remoto** → **rsyslog raw** → **SQLite** → **Bot Telegram** (AUTO: DB-first + fallback LOG)
 
-### 2.2 Ingestão (syslog remoto)
-- **Syslog UDP/514:** `192.168.10.20:514/UDP`
-- **Filtro:** `$fromhost-ip == 192.168.20.1`
-- **Raw log:** `/var/log/mikrotik/un1.log`
+### 2.2 Camada auxiliar anti-stale / freshness
+**VM bot** → **altis-heartbeat.timer/service** → **logger local (`noc_heartbeat`)** → **rsyslog local** → **/var/log/mikrotik/un1.log** → **noc-sqlite-tailer** → **SQLite**
 
-### 2.3 Persistência estruturada
+Objetivo:
+- manter o DB fresco em períodos sem transição real de Netwatch
+- reduzir `db_stale_fallback_log`
+- não poluir KPI/UX porque `SELFTEST` é ruído operacional filtrável
+
+### 2.3 Ingestão (syslog remoto + regra local de heartbeat)
+- **Syslog UDP/514:** `192.168.10.20:514/UDP`
+- **Filtro remoto do MikroTik:** `$fromhost-ip == 192.168.20.1`
+- **Regra local do heartbeat:** `$programname == "noc_heartbeat"` → `/var/log/mikrotik/un1.log`
+- **Raw log único:** `/var/log/mikrotik/un1.log`
+
+### 2.4 Persistência estruturada
 - **DB SQLite (WAL):** `/var/lib/noc/noc.db`
 - **State/offset tailer:** `/var/lib/noc/tailer.state.json`
 - **Campo canônico do check:** `check_name`
+- **Evento auxiliar oficial:** `check=SELFTEST`
 
-### 2.4 Serviços (produção)
+### 2.5 Serviços (produção)
 - `rsyslog.service` → active (running)
 - `noc-sqlite-tailer.service` → active (running)
 - `telegram-bot.service` → active (running)
+- `altis-heartbeat.timer` → enabled/active (waiting)
+- `altis-heartbeat.service` → oneshot, acionado pelo timer, término esperado em `inactive (dead)` com sucesso
 
-### 2.5 Bot (modo padrão)
+### 2.6 Bot (modo padrão)
 - **AUTO**: DB-first
 - **Fallback**: LOG quando DB/tailer estiver stale/indisponível
 
-### 2.6 Fingerprint (resumo)
+### 2.7 Fingerprint (resumo)
 1. `telegram-bot.service ExecStart` → `/home/telegram-bot/venv/bin/python /opt/telegram-bot/bot.py`
 2. `noc-sqlite-tailer.service ExecStart` → `/usr/local/bin/noc-sqlite-tailer.py`
 3. `rsyslog imudp bind` → `192.168.10.20:514/UDP`
 4. `rsyslog filter → file` → `$fromhost-ip == 192.168.20.1` → `/var/log/mikrotik/un1.log`
-5. `logrotate` → `/etc/logrotate.d/mikrotik-un1`
-6. `SQLite DB` → `/var/lib/noc/noc.db` (WAL)
-7. `tailer state` → `/var/lib/noc/tailer.state.json`
-8. `schema campo do check` → `check_name`
-9. `/where` → `BOT_VERSION|build` + `SOURCE=DB/LOG` + freshness + paths
-10. `release/deploy` → `noc-release` + cofre `/var/lib/noc/releases`
+5. `rsyslog local heartbeat → file` → `$programname == "noc_heartbeat"` → `/var/log/mikrotik/un1.log`
+6. `logrotate` → `/etc/logrotate.d/mikrotik-un1`
+7. `SQLite DB` → `/var/lib/noc/noc.db` (WAL)
+8. `tailer state` → `/var/lib/noc/tailer.state.json`
+9. `schema campo do check` → `check_name`
+10. `/where` → `BOT_VERSION|build` + `SOURCE=DB/LOG` + freshness + paths
+11. `altis-heartbeat script` → `/usr/local/bin/altis-heartbeat.sh`
+12. `altis-heartbeat service` → `/etc/systemd/system/altis-heartbeat.service`
+13. `altis-heartbeat timer` → `/etc/systemd/system/altis-heartbeat.timer`
+14. `release/deploy` → `noc-release` + cofre `/var/lib/noc/releases`
 
 ---
 
@@ -138,6 +159,11 @@ tools/ops/botctl.sh reconcile
 - **ESCALLO**: `187.33.28.57`
 - **Telefonia (VOIP)**: `138.99.240.49`
 
+Observação runtime validada em 2026-03-20:
+- entrada rogue/duplicada de Netwatch para `189.91.71.217` com `up-script=...` foi removida
+- permaneceu apenas a entrada canônica `UN1 MUNDIVOX`
+- o erro `bad command name ...` deixou de se reproduzir após a limpeza
+
 ### 5.2 Severidade
 - **SEV1:** MUNDIVOX DOWN (com/sem VALENET)
 - **SEV3:** VALENET DOWN com MUNDIVOX UP
@@ -178,6 +204,12 @@ Modo consolidado:
 - UN2 — Barreiro
 - UN3 — Alípio de Mello
 - `home` como retorno ao painel inicial
+
+### 6.6 Freshness e ruído operacional
+- `SELFTEST` existe para manter freshness do pipeline, e não para virar incidente
+- `SELFTEST` pode entrar no raw/SQLite, mas deve ser tratado como ruído filtrável
+- `Painel agora`, `Resumo 24h` e recomendações não devem destacar `SELFTEST` como ocorrência operacional relevante
+- em dúvida factual, continua valendo a regra: DB/LOG/regras decidem; IA e UX não inventam fato
 
 ---
 
@@ -488,9 +520,17 @@ Se o bundle implantado incluir `tests/`:
 ### 13.3 “DB stale”
 - conferir `noc-sqlite-tailer.service`
 - conferir escrita em `/var/lib/noc/noc.db`
-- lembrar que o bot em AUTO deve cair para LOG quando necessário
+- conferir `altis-heartbeat.timer` e execução recente de `altis-heartbeat.service`
+- confirmar presença de `SELFTEST` em `/var/log/mikrotik/un1.log` e no SQLite
+- lembrar que o bot em AUTO deve cair para LOG quando necessário, mas o heartbeat deve reduzir a incidência de stale em período calmo
 
-### 13.4 Clarificação inesperada
+### 13.4 `bad command name ...` em Netwatch
+- listar entradas duplicadas por host em `/tool netwatch print detail`
+- caçar `up-script=...` ou placeholders importados indevidamente
+- para `189.91.71.217`, manter somente `UN1 MUNDIVOX`
+- remover entrada rogue antes de culpar parser/tailer/bot
+
+### 13.5 Clarificação inesperada
 - revisar contexto curto
 - revisar TTL da sessão
 - revisar se a pergunta ficou sem serviço, sem janela ou ambígua
@@ -499,6 +539,9 @@ Se o bundle implantado incluir `tests/`:
 
 ## 14) Changelog consolidado
 
+- 2026-03-20 — heartbeat/SELFTEST local na VM bot implantado e validado em runtime real, entrando no raw oficial via rsyslog e mantendo `/where` em `SOURCE=DB(ok)` em período estável.
+- 2026-03-20 — documentação canônica passa a formalizar a camada anti-stale (`altis-heartbeat.sh`, `altis-heartbeat.service`, `altis-heartbeat.timer`, `25-altis-heartbeat.conf`).
+- 2026-03-20 — removida entrada rogue/duplicada de Netwatch do MUNDIVOX (`189.91.71.217`) com `up-script=...`, eliminando o erro `bad command name ...` em runtime.
 - 2026-03-18 — documentação oficial passa a cobrir formalmente a **DM assistiva/híbrida** além da FIX6.
 - 2026-03-18 — criado `docs/DM_ASSISTIVA_HIBRIDA.md` para fechar o gap entre código e documentação.
 - 2026-03-18 — `README.md`, `docs/README.md`, `docs/DEPLOY.md`, `baseline/00_INDEX_CANONICO.md` e este canônico foram atualizados para refletir a camada DM atual.
@@ -514,10 +557,10 @@ Se o bundle implantado incluir `tests/`:
 
 ## 15) Próximos passos recomendados
 1. anti-flap na fonte (RouterOS / Netwatch)
-2. hardening API-SSL 9005 (allowlist)
-3. qualidade por operadora (L1/L2)
-4. expansão multi-unidade (UN2 / UN3)
-5. refinamento fino de clarificação, continuidade de contexto e respostas binárias diretas
+2. endurecer o parser para ignorar linhas `message repeated ...`
+3. revisar `QUALITY_L1` / `QUALITY_L2` (severidade/tópico `:log info` versus ingestão esperada)
+4. hardening API-SSL 9005 (allowlist)
+5. expansão multi-unidade (UN2 / UN3)
 
 ---
 
@@ -594,6 +637,57 @@ if ($fromhost-ip == "192.168.20.1") then {
   stop
 }
 ```
+
+### rsyslog — heartbeat local (`/etc/rsyslog.d/25-altis-heartbeat.conf`)
+```conf
+if ($programname == "noc_heartbeat") then {
+  action(type="omfile" file="/var/log/mikrotik/un1.log")
+  stop
+}
+```
+
+### heartbeat script (`/usr/local/bin/altis-heartbeat.sh`)
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+cid="SELFTEST_$(date +%Y-%m-%d_%H:%M:%S)"
+logger -p local0.notice -t noc_heartbeat "NOC|unit=UN1|device=COLLECTOR|check=SELFTEST|state=UP|host=127.0.0.1|cid=${cid}"
+```
+
+### systemd — heartbeat service (`/etc/systemd/system/altis-heartbeat.service`)
+```ini
+[Unit]
+Description=ALTIS heartbeat emit NOC SELFTEST
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/altis-heartbeat.sh
+```
+
+### systemd — heartbeat timer (`/etc/systemd/system/altis-heartbeat.timer`)
+```ini
+[Unit]
+Description=Run ALTIS heartbeat every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=30s
+Persistent=true
+Unit=altis-heartbeat.service
+
+[Install]
+WantedBy=timers.target
+```
+
+### evidência runtime — freshness observada em 2026-03-20
+```text
+SOURCE=DB(ok)
+last_db_ts compatível com execução do altis-heartbeat.service
+freshness_s baixo após implantação
+Painel agora / Resumo 24h sem poluição perceptível por SELFTEST
+```
+
 
 ### logrotate (`/etc/logrotate.d/mikrotik-un1`)
 ```conf

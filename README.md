@@ -66,6 +66,23 @@ Exemplos:
 4. `dm_presenter.py` monta a base da resposta
 5. `ai_client.py` só entra quando permitido pela política
 
+## Freshness do pipeline
+
+Em produção, o pipeline factual principal segue:
+
+**RouterOS 7 (UN1)** → **syslog remoto** → **rsyslog raw** → **SQLite** → **Bot Telegram**
+
+Para evitar `db_stale` em períodos sem transição real de Netwatch, existe uma camada auxiliar de freshness:
+
+**VM bot** → **`altis-heartbeat.timer` / `altis-heartbeat.service`** → **logger local (`noc_heartbeat`)** → **rsyslog local** → **`/var/log/mikrotik/un1.log`** → **SQLite**
+
+Regras do `SELFTEST`:
+- usa o contrato canônico `NOC|...`
+- entra no mesmo raw/DB oficial
+- mantém a fonte fresca
+- **não deve virar incidente, recomendação ou destaque executivo**
+- é tratado como ruído operacional filtrável
+
 ## UX do produto (DM)
 
 O teclado inline cobre:

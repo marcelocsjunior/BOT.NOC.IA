@@ -2,8 +2,8 @@
 
 **Unidade:** UN1  
 **Timezone:** America/Sao_Paulo (BRT)  
-**DATA_BASELINE (vigente):** 2026-03-18  
-**ATUALIZADO_EM:** 2026-03-18 (BRT)  
+**DATA_BASELINE (vigente):** 2026-03-20  
+**ATUALIZADO_EM:** 2026-03-20 (BRT)  
 **Host (produção observado):** ubt  
 
 ---
@@ -29,23 +29,30 @@ Documentos de apoio relevantes:
 
 ## 2) Arquitetura em produção (resumo)
 
-Pipeline (produção):
+Pipeline factual primário (produção):
 **RouterOS7 (UN1)** → **syslog remoto** → **rsyslog raw** → **SQLite** → **Bot Telegram** (AUTO: DB-first + fallback LOG)
+
+Camada auxiliar anti-stale (produção):
+**VM bot** → **altis-heartbeat.timer/service** → **logger local (`noc_heartbeat`)** → **rsyslog local** → **/var/log/mikrotik/un1.log** → **SQLite**
 
 Ingestão:
 - Syslog UDP/514: `192.168.10.20:514/UDP`
-- Filtro: `$fromhost-ip == 192.168.20.1`
+- Filtro remoto do MikroTik: `$fromhost-ip == 192.168.20.1`
+- Regra local de heartbeat: `$programname == "noc_heartbeat"` → `/var/log/mikrotik/un1.log`
 - Raw log: `/var/log/mikrotik/un1.log`
 
 Persistência:
 - DB: `/var/lib/noc/noc.db` (SQLite WAL)
 - State: `/var/lib/noc/tailer.state.json`
 - Schema: campo canônico do check = `check_name`
+- SELFTEST: `check=SELFTEST`, ruído filtrável para freshness do pipeline
 
 Serviços esperados:
 - `rsyslog.service` running
 - `noc-sqlite-tailer.service` running
 - `telegram-bot.service` running
+- `altis-heartbeat.timer` enabled/active (waiting)
+- `altis-heartbeat.service` oneshot acionado pelo timer
 
 ---
 
@@ -78,7 +85,8 @@ Documento detalhado:
 ## 4) Deploy/Release (contrato)
 
 Regra crítica:
-- Deploy padrão atualiza `noc_bot/`; `bot.py` só entra quando houver mudança real de entrypoint/shim, preservando `.env/venv`.
+- Deploy padrão atualiza **somente** `noc_bot/` para preservar `bot.py/.env/venv`.
+- Exceção formal: mudança **infra-controlada** (ex.: heartbeat/SELFTEST) pode alterar rsyslog/systemd/script auxiliar, desde que documentada no canônico e em `docs/DEPLOY.md`.
 
 Ferramentas e contratos:
 - deploy seguro conforme `docs/DEPLOY.md`
@@ -88,7 +96,7 @@ Ferramentas e contratos:
 
 ---
 
-## 5) Estado documental consolidado em 2026-03-18
+## 5) Estado documental consolidado em 2026-03-20
 
 Este baseline passa a refletir explicitamente:
 - toolkit operacional notebook → VM bot
@@ -96,6 +104,8 @@ Este baseline passa a refletir explicitamente:
 - DM assistiva/híbrida documentada além da FIX6
 - smoke test da DM integrado ao critério de deploy
 - separação explícita entre **produto** (UX DM) e **motor conversacional** (roteador, contexto, IA opcional)
+- heartbeat/SELFTEST local na VM bot, validado em runtime em 2026-03-20, para evitar `db_stale` em períodos sem transição real
+- remoção de Netwatch rogue do MUNDIVOX (`up-script=...`) após erro `bad command name ...` em runtime
 
 ---
 
@@ -127,10 +137,11 @@ tools/ops/botctl.sh reconcile
 ## 7) Runbook — mudança no baseline
 
 1. Alterar somente em `baseline/` e `docs/`, registrando a motivação.
-2. Atualizar `README.md` quando a mudança impactar produto/arquitetura percebida.
+2. Atualizar `README.md` e/ou `docs/README.md` quando a mudança impactar produto/arquitetura percebida.
 3. Regenerar integridade do baseline, quando aplicável.
 4. Validar smoke test da DM se a mudança documental refletir comportamento novo do runtime.
-5. Conflito documental: **CANONICO_FULL vence**; documentos de apoio complementam, não substituem.
+5. Em mudança infra-controlada (ex.: heartbeat/SELFTEST), colar também os arquivos efetivos de systemd/rsyslog no canônico full.
+6. Conflito documental: **CANONICO_FULL vence**; documentos de apoio complementam, não substituem.
 
 ---
 

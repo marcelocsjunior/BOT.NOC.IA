@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Atualizar o core do bot com risco controlado, preservando runtime, dados e previsibilidade operacional.
+Atualizar o core do bot e, quando explicitamente aprovado, aplicar mudança infra-controlada com risco controlado, preservando runtime, dados e previsibilidade operacional.
 
 ## Princípios
 
@@ -15,12 +15,21 @@ Atualizar o core do bot com risco controlado, preservando runtime, dados e previ
 - Deploy padrão atualiza **somente** o que muda:
   - `noc_bot/`
   - `bot.py` **apenas** quando houver mudança real de entrypoint/shim
+- Mudança infra-controlada (ex.: heartbeat/SELFTEST) deve ser:
+  - explicitamente registrada em `baseline/` + `docs/`
+  - implantada com rollback claro
+  - validada em raw + SQLite + `/where`
 
 ## Escopo do deploy
 
 ### Muda
 - `noc_bot/`
 - `bot.py` (se necessário)
+- arquivos de infra **somente** quando a mudança for explicitamente infra-controlada:
+  - `/usr/local/bin/altis-heartbeat.sh`
+  - `/etc/rsyslog.d/25-altis-heartbeat.conf`
+  - `/etc/systemd/system/altis-heartbeat.service`
+  - `/etc/systemd/system/altis-heartbeat.timer`
 
 ### Não muda
 - `.env`
@@ -40,9 +49,10 @@ Atualizar o core do bot com risco controlado, preservando runtime, dados e previ
 ## Aplicação (alto nível)
 
 1. atualizar código no runtime (`noc_bot/` e, se necessário, `bot.py`)
-2. reiniciar `telegram-bot.service`
-3. validar saúde com sanity checks
-4. validar smoke test da DM assistiva/híbrida
+2. quando houver mudança infra-controlada, aplicar arquivos de rsyslog/systemd e recarregar serviços necessários
+3. reiniciar `telegram-bot.service` apenas quando o lote afetar o bot
+4. validar saúde com sanity checks
+5. validar smoke test da DM assistiva/híbrida
 
 ## Sanity checks (DoD)
 
@@ -51,6 +61,11 @@ Atualizar o core do bot com risco controlado, preservando runtime, dados e previ
 - `/where` indica `SOURCE=DB` quando DB está saudável
 - timeline/status coerentes
 - DM assistiva/híbrida operando no mínimo sem regressão visível
+- quando houver heartbeat/SELFTEST:
+  - `altis-heartbeat.timer` ativo
+  - `altis-heartbeat.service` finalizando com sucesso
+  - `SELFTEST` visível no raw/SQLite
+  - `SELFTEST` sem poluir painel executivo / resumo operacional
 
 ## Smoke test pós-deploy — DM assistiva
 
@@ -142,6 +157,46 @@ Validar coerência de:
 Atenção:
 - shadow mode é ótimo para homologação
 - é péssimo para fingir que algo está funcionando em produção quando a resposta nem está saindo para o usuário
+
+
+## Mudança infra-controlada — heartbeat / SELFTEST anti-stale
+
+### Objetivo
+Manter freshness do pipeline em períodos sem transição real de Netwatch, reduzindo `db_stale_fallback_log` sem poluir KPI/UX.
+
+### Arquivos implantados na VM bot
+- `/usr/local/bin/altis-heartbeat.sh`
+- `/etc/rsyslog.d/25-altis-heartbeat.conf`
+- `/etc/systemd/system/altis-heartbeat.service`
+- `/etc/systemd/system/altis-heartbeat.timer`
+
+### Contrato técnico
+- evento canônico: `NOC|unit=UN1|device=COLLECTOR|check=SELFTEST|state=UP|host=127.0.0.1|cid=<id>`
+- frequência: 5 minutos
+- injeção no mesmo raw oficial: `/var/log/mikrotik/un1.log`
+- ingestão no mesmo SQLite oficial: `/var/lib/noc/noc.db`
+- `SELFTEST` tratado como ruído operacional, e não como incidente
+
+### Validação mínima
+1. `rsyslogd -N1` sem erro
+2. `systemctl enable --now altis-heartbeat.timer`
+3. `systemctl start altis-heartbeat.service`
+4. confirmar `SELFTEST` em:
+   - `/var/log/mikrotik/un1.log`
+   - `/var/lib/noc/noc.db`
+5. confirmar `/where` em `SOURCE=DB(ok)` com `last_db_ts` compatível com o timer
+6. confirmar que `Painel agora` / `Resumo 24h` não promovem `SELFTEST` como incidente
+
+### Rollback específico do heartbeat
+1. `systemctl disable --now altis-heartbeat.timer`
+2. remover:
+   - `/etc/systemd/system/altis-heartbeat.timer`
+   - `/etc/systemd/system/altis-heartbeat.service`
+   - `/etc/rsyslog.d/25-altis-heartbeat.conf`
+   - `/usr/local/bin/altis-heartbeat.sh`
+3. `systemctl daemon-reload`
+4. `systemctl restart rsyslog`
+5. validar `/where`, raw e SQLite
 
 ## Rollback (contenção)
 
