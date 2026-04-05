@@ -43,6 +43,17 @@ def _has_n_params(fn, n: int) -> bool:
         return True
 
 
+def _panel_unit_from_current_message(update: Update) -> str:
+    q = update.callback_query
+    text = getattr(getattr(q, "message", None), "text", "") or ""
+    norm = text.upper()
+    if "UN2" in norm or "BARREIRO" in norm:
+        return "UN2"
+    if "UN3" in norm or "ALÍPIO" in norm or "ALIPIO" in norm:
+        return "UN3"
+    return "UN1"
+
+
 async def _send_callback_text(update: Update, context: ContextTypes.DEFAULT_TYPE, text: str) -> None:
     q = update.callback_query
     if q and _is_dm(update):
@@ -131,7 +142,11 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data in {"sup:now", "dm:panel", "panel"}:
-        await cmd_supervisor_now(update, context, user_text="(callback)")
+        panel_unit = _panel_unit_from_current_message(update)
+        if panel_unit != "UN1":
+            await cmd_dm_unit(update, context, panel_unit)
+        else:
+            await cmd_supervisor_now(update, context, user_text="(callback)")
         return
 
     if data == "dm:avail_today":

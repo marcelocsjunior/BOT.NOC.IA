@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 from __future__ import annotations
 
 """UI pública do bot.
@@ -25,7 +24,7 @@ def build_dm_home_keyboard() -> InlineKeyboardMarkup:
     rows = [
         [InlineKeyboardButton("UN1 — Eldorado", callback_data="unit:UN1")],
         [InlineKeyboardButton("UN2 — Barreiro", callback_data="unit:UN2"), InlineKeyboardButton("UN3 — Alípio", callback_data="unit:UN3")],
-        [InlineKeyboardButton("🖥️ Painel da unidade", callback_data="sup:now")],
+        [InlineKeyboardButton("🖥️ Painel da unidade", callback_data="unit:UN1")],
         [InlineKeyboardButton("🧠 Fonte (/where)", callback_data="where")],
     ]
     return InlineKeyboardMarkup(rows)
