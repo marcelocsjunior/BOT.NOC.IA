@@ -36,7 +36,7 @@ from ..dm_intents import (
 )
 from ..dm_presenter import render_factual
 from ..dm_router import resolve_dm_route
-from ..dm_session import save_last_resolution
+from ..dm_session import save_last_resolution, set_selected_unit
 from ..dm_queries import dispatch_query
 from ..utils import is_mention_or_reply, strip_mention
 from .commands import (
@@ -545,12 +545,18 @@ async def on_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     if _is_dm(update):
         if any(k in tn for k in ("un1", "eldorado", "matriz")):
+            if chat:
+                set_selected_unit(chat.id, "UN1")
             await cmd_dm_unit(update, context, "UN1")
             return
         if any(k in tn for k in ("un2", "barreiro")):
+            if chat:
+                set_selected_unit(chat.id, "UN2")
             await cmd_dm_unit(update, context, "UN2")
             return
         if any(k in tn for k in ("un3", "alipio", "alipio de mello", "alipio de melo")):
+            if chat:
+                set_selected_unit(chat.id, "UN3")
             await cmd_dm_unit(update, context, "UN3")
             return
 
