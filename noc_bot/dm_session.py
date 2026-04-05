@@ -30,6 +30,7 @@ class DMSession(TypedDict):
     last_service: Optional[ServiceKey]
     last_period: Optional[PeriodKey]
     last_route: str
+    selected_unit: Optional[str]
     turns: int
 
 
@@ -51,6 +52,7 @@ def _new_session(chat_id: int) -> DMSession:
         "last_service": None,
         "last_period": None,
         "last_route": "",
+        "selected_unit": None,
         "turns": 0,
     }
 
@@ -140,4 +142,26 @@ def save_last_resolution(
         sess["last_period"] = period
     if route:
         sess["last_route"] = route
+    return sess
+
+
+def set_selected_unit(chat_id: int, unit_id: str) -> DMSession:
+    sess = get_session(chat_id)
+    sess["updated_at"] = time.time()
+    sess["selected_unit"] = (unit_id or "").upper().strip() or None
+    return sess
+
+
+def get_selected_unit(chat_id: int) -> Optional[str]:
+    sess = peek_session(chat_id)
+    if not sess:
+        return None
+    unit = (sess.get("selected_unit") or "").upper().strip()
+    return unit or None
+
+
+def clear_selected_unit(chat_id: int) -> DMSession:
+    sess = get_session(chat_id)
+    sess["updated_at"] = time.time()
+    sess["selected_unit"] = None
     return sess
