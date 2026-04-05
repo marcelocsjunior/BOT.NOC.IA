@@ -22,6 +22,7 @@ from .commands import (
     cmd_dm_home,
     cmd_dm_unit,
 )
+from ..dm_session import clear_selected_unit, get_selected_unit, set_selected_unit
 from ..telegram_ui import build_dm_keyboard, build_group_keyboard
 
 
@@ -44,6 +45,12 @@ def _has_n_params(fn, n: int) -> bool:
 
 
 def _panel_unit_from_current_message(update: Update) -> str:
+    chat = update.effective_chat
+    if chat:
+        selected_unit = get_selected_unit(chat.id)
+        if selected_unit in {"UN2", "UN3"}:
+            return selected_unit
+
     q = update.callback_query
     text = getattr(getattr(q, "message", None), "text", "") or ""
     norm = text.upper()
@@ -133,11 +140,17 @@ async def on_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data in {"home", "dm:home", "root"}:
+        chat = update.effective_chat
+        if chat:
+            clear_selected_unit(chat.id)
         await cmd_dm_home(update, context)
         return
 
     if data.startswith("unit:"):
         unit = data.split(":", 1)[1] if ":" in data else "UN1"
+        chat = update.effective_chat
+        if chat:
+            set_selected_unit(chat.id, unit)
         await cmd_dm_unit(update, context, unit)
         return
 
