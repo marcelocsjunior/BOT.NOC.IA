@@ -430,6 +430,20 @@ def _deterministic_consult(chat_id: int, text: str) -> Optional[RouteDecision]:
         service
         and intent == "status_atual"
         and period == "now"
+        and re.search(r"\b(ok|status|agora|atual|ta ok|tudo ok|tudo bem)\b", normalized_text)
+    ):
+        return _decision(
+            handled=True,
+            route="consult",
+            source="deterministic",
+            intent_data=intent_data,
+            reason="service_status_probe_direct",
+        )
+
+    if (
+        service
+        and intent == "status_atual"
+        and period == "now"
         and not looks_like_status_probe(normalized_text, normalized=True)
         and (_is_questionish(text, normalized_text) or normalized_text.startswith("e "))
     ):

@@ -117,6 +117,17 @@ def _render_status(result: QueryResult) -> str:
         since_ts = _fmt_ts(data.get("since_ts"))
         duration = fmt_dur(data.get("duration_sec"))
 
+        meta = result["meta"]
+        unit = str(result.get("unit") or "unidade").upper()
+
+        if meta.get("stale") and (state == "UNKNOWN" or not data.get("since_ts")):
+            return _join_lines(
+                [
+                    f"Sem evidência recente/confiável de {label} para {unit} agora.",
+                    "Não vou afirmar status OK com dados desatualizados.",
+                ]
+            )
+
         if state == "DOWN":
             return _join_lines(
                 [
@@ -166,6 +177,16 @@ def _render_failures(result: QueryResult) -> str:
     last_duration = fmt_dur(data.get("last_duration_sec"))
     last_cid = data.get("last_cid")
     period_phrase = _period_phrase(result["period"])
+    meta = result["meta"]
+    unit = str(result.get("unit") or "unidade").upper()
+
+    if count <= 0 and meta.get("stale"):
+        return _join_lines(
+            [
+                f"Sem evidência recente/confiável de {label} para {unit} {period_phrase}.",
+                "Não vou afirmar ausência de queda com dados stale.",
+            ]
+        )
 
     if count <= 0:
         return _join_lines([f"{label} não apresentou quedas {period_phrase}."])
