@@ -96,7 +96,7 @@ def query_status(service: Optional[ServiceKey], period: PeriodKey, unit: Optiona
         latest_ev, snap = _latest_event_for_service(service, target_unit)
         meta = _base_meta(snap, service, [latest_ev] if latest_ev else [], latest_ev, target_unit)
         if not latest_ev:
-            return _result(unit=target_unit, intent="status_atual", service=service, period=period, ok=False, meta=meta, data={"state": "UNKNOWN", "since_ts": None, "duration_sec": None}, fallback_reason="no_service")
+            return _result(unit=target_unit, intent="status_atual", service=service, period=period, ok=True, meta=meta, data={"state": "UNKNOWN", "since_ts": None, "duration_sec": None}, fallback_reason="none")
         duration_sec = int((datetime.now(latest_ev.ts.tzinfo) - latest_ev.ts).total_seconds())
         return _result(unit=target_unit, intent="status_atual", service=service, period=period, ok=True, meta=meta, data={"state": (latest_ev.state or "UNKNOWN").upper(), "since_ts": base._dt_to_iso(latest_ev.ts), "duration_sec": duration_sec})
 

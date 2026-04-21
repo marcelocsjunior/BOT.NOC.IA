@@ -80,7 +80,7 @@ _INTENT_PATTERNS: list[tuple[IntentName, re.Pattern[str]]] = [
     ("acao_recomendada", re.compile(r"\b(o que fazer|recomendacao|recomenda|acao|procedimento|sugere)\b")),
     (
         "queda_servico_janela",
-        re.compile(r"\b(caiu|queda|indisponivel|instavel|instabilidade|flap|oscilacao)\b"),
+        re.compile(r"\b(caiu|queda|quedas|falha|falhas|indisponivel|instavel|instabilidade|flap|oscilacao)\b"),
     ),
     (
         "status_atual",
@@ -112,7 +112,7 @@ _OUT_OF_SCOPE_PATTERNS: list[re.Pattern[str]] = [
 _COMPLAINT_PATTERN = re.compile(
     r"\b("
     r"lento|lenta|lentidao|travando|trava|travou|travamento|"
-    r"caindo|cai|caiu|cair|queda|quedas|instavel|instabilidade|"
+    r"caindo|cai|caiu|cair|queda|quedas|falha|falhas|instavel|instabilidade|"
     r"ruim|reclama|reclamacao"
     r")\b"
 )
@@ -335,7 +335,7 @@ def detect_intent(text: str, min_confidence: float = _MIN_CONFIDENCE_DEFAULT) ->
 
 
 _NOC_DOMAIN_TOKENS = (
-    "status", "queda", "falha", "falhas", "cid", "resumo", "instavel", "instabilidade",
+    "status", "queda", "quedas", "falha", "falhas", "cid", "resumo", "instavel", "instabilidade",
     "telefonia", "telefone", "voip", "ramal", "escallo", "escalo", "internet", "rede",
     "link", "mundivox", "valenet", "vpn", "un1", "un2", "un3", "evidencia", "evidência",
 )

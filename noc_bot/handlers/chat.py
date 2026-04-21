@@ -227,6 +227,79 @@ def _apply_selected_unit(chat_id: int, intent_data: IntentData) -> IntentData:
     return cast(IntentData, updated)
 
 
+def _detect_dm_unit_from_text(tn: str) -> str | None:
+    if any(k in tn for k in ("un1", "eldorado", "matriz")):
+        return "UN1"
+    if any(k in tn for k in ("un2", "barreiro")):
+        return "UN2"
+    if any(k in tn for k in ("un3", "alipio", "alipio de mello", "alipio de melo")):
+        return "UN3"
+    return None
+
+
+def _is_plain_unit_navigation(tn: str, t: str) -> bool:
+    cleaned = tn.strip().strip(" .!?")
+    plain = {
+        "un1",
+        "un1 status",
+        "eldorado",
+        "eldorado status",
+        "matriz",
+        "matriz status",
+        "un2",
+        "un2 status",
+        "barreiro",
+        "barreiro status",
+        "un3",
+        "un3 status",
+        "alipio",
+        "alipio status",
+        "alipio de mello",
+        "alipio de mello status",
+        "alipio de melo",
+        "alipio de melo status",
+    }
+    if cleaned in plain:
+        return True
+
+    # Se tem serviço/intenção junto, não é navegação simples.
+    if detect_service_from_text(t):
+        return False
+
+    intent_tokens = (
+        "telefone",
+        "telefonia",
+        "voip",
+        "ramal",
+        "falha",
+        "falhas",
+        "queda",
+        "quedas",
+        "caiu",
+        "cai",
+        "cair",
+        "ok",
+        "cid",
+        "evidencia",
+        "evidência",
+        "prova",
+        "resumo",
+        "qualidade",
+        "internet",
+        "link",
+        "escallo",
+        "escalo",
+        "mundivox",
+        "valenet",
+        "hoje",
+        "ontem",
+        "24h",
+        "7d",
+        "30d",
+    )
+    return not any(tok in tn for tok in intent_tokens)
+
+
 def _looks_like_out_of_scope_dm_question(text: str, tn: str) -> bool:
     if is_out_of_scope_request(tn, normalized=True):
         return True
@@ -386,21 +459,12 @@ async def on_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await cmd_evidence_request(update, context, svc)
         return
     if _is_dm(update):
-        if any(k in tn for k in ("un1", "eldorado", "matriz")):
-            if chat:
-                set_selected_unit(chat.id, "UN1")
-            await cmd_dm_unit(update, context, "UN1")
-            return
-        if any(k in tn for k in ("un2", "barreiro")):
-            if chat:
-                set_selected_unit(chat.id, "UN2")
-            await cmd_dm_unit(update, context, "UN2")
-            return
-        if any(k in tn for k in ("un3", "alipio", "alipio de mello", "alipio de melo")):
-            if chat:
-                set_selected_unit(chat.id, "UN3")
-            await cmd_dm_unit(update, context, "UN3")
-            return
+        detected_unit = _detect_dm_unit_from_text(tn)
+        if detected_unit and chat:
+            set_selected_unit(chat.id, detected_unit)
+            if _is_plain_unit_navigation(tn, t):
+                await cmd_dm_unit(update, context, detected_unit)
+                return
     if _is_dm(update) and is_strict_global_status_request(tn, normalized=True):
         await cmd_status(update, context)
         return
